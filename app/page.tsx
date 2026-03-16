@@ -115,21 +115,21 @@ export default function Page() {
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">ホテル予算管理</h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <h1 className="text-2xl font-bold text-gray-900">ホテル予算管理</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
               契約ホテルの費用予算・実績を一元管理
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={resetToSample}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+              className="text-sm text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
             >
               サンプルリセット
             </button>
             <button
               onClick={handleAddHotel}
-              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5"
             >
               <span className="text-base leading-none">＋</span>
               <span>ホテル追加</span>
@@ -144,10 +144,10 @@ export default function Page() {
 
         {/* Group Filter */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500 font-medium">絞り込み:</span>
+          <span className="text-sm text-gray-500 font-medium">絞り込み:</span>
           <button
             onClick={() => setFilterGroups([])}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
               filterGroups.length === 0
                 ? "bg-gray-800 text-white border-gray-800"
                 : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
@@ -159,7 +159,7 @@ export default function Page() {
             <button
               key={g}
               onClick={() => toggleGroup(g)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
                 filterGroups.includes(g)
                   ? GROUP_COLORS[g]
                   : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
@@ -168,7 +168,7 @@ export default function Page() {
               {g}
             </button>
           ))}
-          <span className="text-xs text-gray-400 ml-1">
+          <span className="text-sm text-gray-400 ml-1">
             {filteredHotels.length}件
           </span>
         </div>
@@ -177,10 +177,10 @@ export default function Page() {
         {filteredHotels.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <div className="text-5xl mb-4">🏨</div>
-            <p className="text-sm">ホテルが登録されていません</p>
+            <p className="text-base">ホテルが登録されていません</p>
             <button
               onClick={handleAddHotel}
-              className="mt-4 text-blue-600 hover:underline text-sm"
+              className="mt-4 text-blue-600 hover:underline text-base"
             >
               ホテルを追加する
             </button>

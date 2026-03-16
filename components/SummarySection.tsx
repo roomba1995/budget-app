@@ -133,7 +133,7 @@ export default function SummarySection({ hotels }: Props) {
         {/* Category breakdown */}
         {categoryTotals.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h2 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">
+            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
               費目別内訳
             </h2>
             <div className="space-y-2.5">
@@ -149,11 +149,11 @@ export default function SummarySection({ hotels }: Props) {
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-1">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${CATEGORY_COLORS[cat]}`}
+                        className={`text-sm px-2 py-0.5 rounded-full ${CATEGORY_COLORS[cat]}`}
                       >
                         {cat}
                       </span>
-                      <div className="flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-3 text-sm">
                         <span className="text-gray-400">
                           予算 {formatCurrency(budget)}
                         </span>
@@ -183,7 +183,7 @@ export default function SummarySection({ hotels }: Props) {
         {/* Group breakdown */}
         {groupStats.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h2 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">
+            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
               グループ別内訳
             </h2>
             <div className="space-y-2">
@@ -196,15 +196,15 @@ export default function SummarySection({ hotels }: Props) {
                   >
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${GROUP_COLORS[g]}`}
+                        className={`text-sm px-2 py-0.5 rounded-full ${GROUP_COLORS[g]}`}
                       >
                         {g}
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-sm text-gray-400">
                         {count}ホテル
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-3 text-sm">
                       <span className="text-gray-400">
                         {formatCurrency(budget)}
                       </span>
@@ -243,15 +243,15 @@ function SummaryCard({
 }) {
   return (
     <div className={`rounded-xl border p-4 ${bgColor} ${borderColor}`}>
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className="text-sm text-gray-500 mb-1">{label}</div>
       <div
-        className={`text-base sm:text-lg font-bold break-all ${
+        className={`text-lg sm:text-xl font-bold break-all ${
           valueClass || "text-gray-900"
         }`}
       >
         {value}
       </div>
-      {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
+      {sub && <div className="text-sm text-gray-400 mt-0.5">{sub}</div>}
     </div>
   );
 }

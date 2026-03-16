@@ -56,7 +56,7 @@ export default function HotelCard({
                 </span>
               ))}
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5 text-sm text-gray-500">
               {hotel.location && <span>📍 {hotel.location}</span>}
               <span>
                 📅 {formatDateRange(hotel.contractStartDate, hotel.contractEndDate)}
@@ -75,11 +75,11 @@ export default function HotelCard({
           {/* Right: totals + actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="text-right hidden sm:block">
-              <div className="text-xs text-gray-400">予算 / 実績</div>
-              <div className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              <div className="text-sm text-gray-400">予算 / 実績</div>
+              <div className="text-base font-medium text-gray-700 whitespace-nowrap">
                 {formatCurrency(budget)} / {formatCurrency(actual)}
               </div>
-              <div className={`text-xs ${variance.className}`}>
+              <div className={`text-sm ${variance.className}`}>
                 {variance.text}
               </div>
             </div>
@@ -116,7 +116,7 @@ export default function HotelCard({
         </div>
 
         {/* Mobile: totals row */}
-        <div className="sm:hidden mt-2 flex items-center justify-between text-xs">
+        <div className="sm:hidden mt-2 flex items-center justify-between text-sm">
           <span className="text-gray-500">
             予算 {formatCurrency(budget)} / 実績 {formatCurrency(actual)}
           </span>
@@ -128,7 +128,7 @@ export default function HotelCard({
       {expanded && (
         <div className="border-t border-gray-100 px-4 pb-5">
           {hotel.notes && (
-            <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
+            <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-700">
               📝 {hotel.notes}
             </div>
           )}
@@ -137,21 +137,21 @@ export default function HotelCard({
             <h4 className="text-sm font-semibold text-gray-700">費用明細</h4>
             <button
               onClick={onAddCostItem}
-              className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-100 border border-blue-200 transition-colors"
+              className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-100 border border-blue-200 transition-colors"
             >
               ＋ 費用追加
             </button>
           </div>
 
           {hotel.costItems.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">
+            <div className="text-center py-8 text-gray-400 text-base">
               費用データがありません。「費用追加」から登録してください。
             </div>
           ) : (
             <div className="mt-2 overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-sm min-w-[640px]">
+              <table className="w-full text-base min-w-[640px]">
                 <thead>
-                  <tr className="text-xs text-gray-500 border-b border-gray-100">
+                  <tr className="text-sm text-gray-500 border-b border-gray-100">
                     <th className="text-left py-2 pr-3 font-medium w-32">
                       費目
                     </th>
@@ -179,7 +179,7 @@ export default function HotelCard({
                       >
                         <td className="py-2 pr-3">
                           <span
-                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${CATEGORY_COLORS[item.category]}`}
+                            className={`text-sm px-2 py-0.5 rounded-full whitespace-nowrap ${CATEGORY_COLORS[item.category]}`}
                           >
                             {item.category}
                           </span>
@@ -198,7 +198,7 @@ export default function HotelCard({
                         >
                           {v.text}
                         </td>
-                        <td className="py-2 pr-3 text-gray-400 text-xs max-w-[160px] truncate">
+                        <td className="py-2 pr-3 text-gray-400 text-sm max-w-[160px] truncate">
                           {item.notes}
                         </td>
                         <td className="py-2 whitespace-nowrap">
@@ -224,7 +224,7 @@ export default function HotelCard({
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-gray-50 font-semibold text-sm border-t border-gray-200">
+                  <tr className="bg-gray-50 font-semibold text-base border-t border-gray-200">
                     <td colSpan={2} className="py-2.5 px-2 text-gray-600">
                       合計
                     </td>
