@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/budget-management-page-fGrDX
 
 permissions:
   contents: read
