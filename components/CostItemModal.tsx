@@ -10,6 +10,8 @@ import {
   EVENTS,
   EVENT_LABELS,
   EVENT_COLORS,
+  MealSubCategory,
+  MEAL_SUB_CATEGORIES,
   calcLineTotal,
   formatCurrency,
 } from "@/types";
@@ -42,6 +44,18 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
     item?.actualAmount != null ? String(item.actualAmount) : ""
   );
   const [notes, setNotes] = useState(item?.notes ?? "");
+  const [executedAmount, setExecutedAmount] = useState(
+    item?.executedAmount ? String(item.executedAmount) : ""
+  );
+  const [plannedAmount, setPlannedAmount] = useState(
+    item?.plannedAmount ? String(item.plannedAmount) : ""
+  );
+  const [forecastAmount, setForecastAmount] = useState(
+    item?.forecastAmount ? String(item.forecastAmount) : ""
+  );
+  const [mealSubCategory, setMealSubCategory] = useState<MealSubCategory | "">(
+    item?.mealSubCategory ?? ""
+  );
 
   // 単価×人数×泊数から実績額を自動計算
   const computed = calcLineTotal(
@@ -68,6 +82,10 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
       nights: Number(nights) || 0,
       budgetAmount: Number(budgetAmount) || 0,
       actualAmount: Number(actualAmount) || 0,
+      executedAmount: Number(executedAmount) || 0,
+      plannedAmount: Number(plannedAmount) || 0,
+      forecastAmount: Number(forecastAmount) || 0,
+      mealSubCategory: mealSubCategory || undefined,
       notes: notes.trim(),
     });
   };
@@ -258,6 +276,87 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
                   </span>
                 );
               })()}
+            </div>
+          )}
+
+          {/* 執行状況 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              執行状況（任意）
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-xs text-gray-500 mb-1">執行済み額（円）</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={executedAmount}
+                  onChange={(e) => setExecutedAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">執行予定額（円）</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={plannedAmount}
+                  onChange={(e) => setPlannedAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">今後の見込み（円）</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={forecastAmount}
+                  onChange={(e) => setForecastAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 text-right tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 飲食費サブカテゴリ */}
+          {category === "飲食費" && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-2">
+                飲食費 サブ区分（任意）
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMealSubCategory("")}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    !mealSubCategory
+                      ? "bg-gray-800 text-white border-gray-800"
+                      : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  未分類
+                </button>
+                {MEAL_SUB_CATEGORIES.map((sub) => (
+                  <button
+                    key={sub}
+                    type="button"
+                    onClick={() => setMealSubCategory(sub)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      mealSubCategory === sub
+                        ? "bg-green-100 text-green-700 border-green-300"
+                        : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
+                    }`}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

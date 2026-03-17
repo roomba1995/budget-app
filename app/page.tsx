@@ -8,8 +8,12 @@ import HotelCard from "@/components/HotelCard";
 import HotelFormModal from "@/components/HotelFormModal";
 import CostItemModal from "@/components/CostItemModal";
 import BudgetSummaryView from "@/components/BudgetSummaryView";
+import ExecutionDashboard from "@/components/ExecutionDashboard";
+import ContractStatusView from "@/components/ContractStatusView";
+import BudgetVersionView from "@/components/BudgetVersionView";
+import MealCategoryView from "@/components/MealCategoryView";
 
-type Tab = "hotels" | "budget";
+type Tab = "hotels" | "budget" | "execution" | "contract" | "version" | "meal";
 
 export default function Page() {
   const {
@@ -23,6 +27,10 @@ export default function Page() {
     deleteCostItem,
     resetToSample,
   } = useHotels();
+
+  const handleUpdateHotel = (id: string, updates: Partial<Omit<Hotel, "id" | "costItems">>) => {
+    updateHotel(id, updates);
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>("hotels");
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
@@ -145,7 +153,7 @@ export default function Page() {
 
         {/* Tabs */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex gap-0 border-b border-gray-200 -mb-px">
+          <div className="flex gap-0 border-b border-gray-200 -mb-px overflow-x-auto">
             <TabButton
               active={activeTab === "hotels"}
               onClick={() => setActiveTab("hotels")}
@@ -157,6 +165,30 @@ export default function Page() {
               onClick={() => setActiveTab("budget")}
             >
               予算サマリー
+            </TabButton>
+            <TabButton
+              active={activeTab === "execution"}
+              onClick={() => setActiveTab("execution")}
+            >
+              執行状況
+            </TabButton>
+            <TabButton
+              active={activeTab === "contract"}
+              onClick={() => setActiveTab("contract")}
+            >
+              契約状況
+            </TabButton>
+            <TabButton
+              active={activeTab === "version"}
+              onClick={() => setActiveTab("version")}
+            >
+              バージョン比較
+            </TabButton>
+            <TabButton
+              active={activeTab === "meal"}
+              onClick={() => setActiveTab("meal")}
+            >
+              飲食費詳細
             </TabButton>
           </div>
         </div>
@@ -238,6 +270,19 @@ export default function Page() {
         )}
 
         {activeTab === "budget" && <BudgetSummaryView hotels={hotels} />}
+
+        {activeTab === "execution" && <ExecutionDashboard hotels={hotels} />}
+
+        {activeTab === "contract" && (
+          <ContractStatusView
+            hotels={hotels}
+            onUpdateHotel={handleUpdateHotel}
+          />
+        )}
+
+        {activeTab === "version" && <BudgetVersionView hotels={hotels} />}
+
+        {activeTab === "meal" && <MealCategoryView hotels={hotels} />}
       </main>
 
       {hotelModalOpen && (

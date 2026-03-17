@@ -29,6 +29,38 @@ export const COST_CATEGORIES = [
 ] as const;
 export type CostCategory = (typeof COST_CATEGORIES)[number];
 
+export const MEAL_SUB_CATEGORIES = [
+  "通常食",
+  "ハラル・ヴィーガン",
+  "グラブアンドゴー",
+  "空港島・仮設厨房",
+  "厨房機器レンタル",
+] as const;
+export type MealSubCategory = (typeof MEAL_SUB_CATEGORIES)[number];
+
+export const CONTRACT_STATUSES = [
+  "契約済",
+  "契約書提示中",
+  "契約書提示前",
+  "見積取得済",
+  "見積依頼中",
+  "見積依頼前",
+  "交渉中",
+  "未着手",
+] as const;
+export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
+
+export const CONTRACT_STATUS_COLORS: Record<ContractStatus, string> = {
+  契約済: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  契約書提示中: "bg-blue-100 text-blue-700 border border-blue-200",
+  契約書提示前: "bg-sky-100 text-sky-700 border border-sky-200",
+  見積取得済: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+  見積依頼中: "bg-orange-100 text-orange-700 border border-orange-200",
+  見積依頼前: "bg-gray-100 text-gray-600 border border-gray-200",
+  交渉中: "bg-purple-100 text-purple-700 border border-purple-200",
+  未着手: "bg-red-100 text-red-600 border border-red-200",
+};
+
 export const GROUP_COLORS: Record<Group, string> = {
   選手団: "bg-blue-100 text-blue-800 border border-blue-200",
   技術役員: "bg-purple-100 text-purple-800 border border-purple-200",
@@ -76,19 +108,46 @@ export interface CostItem {
   nights: number;
   budgetAmount: number;
   actualAmount: number;
+  /** 執行済み額 */
+  executedAmount: number;
+  /** 執行予定額 */
+  plannedAmount: number;
+  /** 今後の執行見込み */
+  forecastAmount: number;
+  /** 飲食費のサブカテゴリ */
+  mealSubCategory?: MealSubCategory;
   notes: string;
 }
 
 export interface Hotel {
   id: string;
+  /** 施設番号 e.g. "0001" */
+  facilityNo?: string;
   name: string;
   location: string;
   groups: Group[];
+  contractStatus?: ContractStatus;
   contractStartDate: string;
   contractEndDate: string;
   roomTypes: RoomType[];
   costItems: CostItem[];
   notes: string;
+}
+
+export interface BudgetVersionEntry {
+  hotelId: string;
+  hotelName: string;
+  category: CostCategory;
+  event: GameEvent;
+  budgetAmount: number;
+  actualAmount: number;
+}
+
+export interface BudgetVersion {
+  id: string;
+  name: string;
+  createdAt: string;
+  entries: BudgetVersionEntry[];
 }
 
 export function formatCurrency(amount: number): string {
