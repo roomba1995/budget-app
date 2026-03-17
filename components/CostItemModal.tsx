@@ -1,7 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { CostItem, CostCategory, COST_CATEGORIES, CATEGORY_COLORS } from "@/types";
+import { useState, useEffect } from "react";
+import {
+  CostItem,
+  CostCategory,
+  COST_CATEGORIES,
+  CATEGORY_COLORS,
+  GameEvent,
+  EVENTS,
+  EVENT_LABELS,
+  EVENT_COLORS,
+  calcLineTotal,
+  formatCurrency,
+} from "@/types";
 
 interface Props {
   item: CostItem | null;
@@ -11,9 +22,19 @@ interface Props {
 
 export default function CostItemModal({ item, onSubmit, onClose }: Props) {
   const [category, setCategory] = useState<CostCategory>(
-    item?.category ?? "客室料金"
+    item?.category ?? "客室確保費"
   );
+  const [event, setEvent] = useState<GameEvent>(item?.event ?? "asia");
   const [description, setDescription] = useState(item?.description ?? "");
+  const [unitPrice, setUnitPrice] = useState(
+    item?.unitPrice ? String(item.unitPrice) : ""
+  );
+  const [personCount, setPersonCount] = useState(
+    item?.personCount ? String(item.personCount) : ""
+  );
+  const [nights, setNights] = useState(
+    item?.nights ? String(item.nights) : ""
+  );
   const [budgetAmount, setBudgetAmount] = useState(
     item?.budgetAmount != null ? String(item.budgetAmount) : ""
   );
@@ -22,12 +43,29 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
   );
   const [notes, setNotes] = useState(item?.notes ?? "");
 
+  // 単価×人数×泊数から実績額を自動計算
+  const computed = calcLineTotal(
+    Number(unitPrice) || 0,
+    Number(personCount) || 0,
+    Number(nights) || 0
+  );
+
+  useEffect(() => {
+    if (computed !== null) {
+      setActualAmount(String(computed));
+    }
+  }, [unitPrice, personCount, nights]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
     onSubmit({
       category,
       description: description.trim(),
+      event,
+      unitPrice: Number(unitPrice) || 0,
+      personCount: Number(personCount) || 0,
+      nights: Number(nights) || 0,
       budgetAmount: Number(budgetAmount) || 0,
       actualAmount: Number(actualAmount) || 0,
       notes: notes.trim(),
@@ -36,7 +74,7 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-900">
@@ -55,6 +93,29 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
           onSubmit={handleSubmit}
           className="overflow-y-auto flex-1 px-5 py-4 space-y-4"
         >
+          {/* Event */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              対象大会
+            </label>
+            <div className="flex gap-2">
+              {EVENTS.map((ev) => (
+                <button
+                  key={ev}
+                  type="button"
+                  onClick={() => setEvent(ev)}
+                  className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    event === ev
+                      ? EVENT_COLORS[ev]
+                      : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  {EVENT_LABELS[ev]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Category */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">
@@ -88,8 +149,58 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="例：スタンダードルーム（15泊×80室）"
+              placeholder="例：スタンダードルーム（選手団）"
             />
+          </div>
+
+          {/* Unit breakdown */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              単価 × 人数 × 泊数（任意）
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-xs text-gray-500 mb-1 text-center">単価（円）</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1 text-center">人数</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={personCount}
+                  onChange={(e) => setPersonCount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1 text-center">泊数</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={nights}
+                  onChange={(e) => setNights(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            {computed !== null && (
+              <div className="mt-1.5 text-xs text-right text-blue-600">
+                計算値: {formatCurrency(computed)}（実績額に自動反映）
+              </div>
+            )}
           </div>
 
           {/* Amounts */}
@@ -111,6 +222,9 @@ export default function CostItemModal({ item, onSubmit, onClose }: Props) {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 実績額（円）
+                {computed !== null && (
+                  <span className="ml-1 text-blue-500">※自動計算</span>
+                )}
               </label>
               <input
                 type="number"

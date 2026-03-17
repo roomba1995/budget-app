@@ -7,6 +7,9 @@ import SummarySection from "@/components/SummarySection";
 import HotelCard from "@/components/HotelCard";
 import HotelFormModal from "@/components/HotelFormModal";
 import CostItemModal from "@/components/CostItemModal";
+import BudgetSummaryView from "@/components/BudgetSummaryView";
+
+type Tab = "hotels" | "budget";
 
 export default function Page() {
   const {
@@ -21,6 +24,7 @@ export default function Page() {
     resetToSample,
   } = useHotels();
 
+  const [activeTab, setActiveTab] = useState<Tab>("hotels");
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
   const [expandedHotelId, setExpandedHotelId] = useState<string | null>(null);
 
@@ -127,87 +131,113 @@ export default function Page() {
             >
               サンプルリセット
             </button>
-            <button
-              onClick={handleAddHotel}
-              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+            {activeTab === "hotels" && (
+              <button
+                onClick={handleAddHotel}
+                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+              >
+                <span className="text-base leading-none">＋</span>
+                <span>ホテル追加</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex gap-0 border-b border-gray-200 -mb-px">
+            <TabButton
+              active={activeTab === "hotels"}
+              onClick={() => setActiveTab("hotels")}
             >
-              <span className="text-base leading-none">＋</span>
-              <span>ホテル追加</span>
-            </button>
+              ホテル管理
+            </TabButton>
+            <TabButton
+              active={activeTab === "budget"}
+              onClick={() => setActiveTab("budget")}
+            >
+              予算サマリー
+            </TabButton>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-        {/* Summary */}
-        <SummarySection hotels={hotels} />
+        {activeTab === "hotels" && (
+          <>
+            {/* Summary */}
+            <SummarySection hotels={hotels} />
 
-        {/* Group Filter */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-500 font-medium">絞り込み:</span>
-          <button
-            onClick={() => setFilterGroups([])}
-            className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-              filterGroups.length === 0
-                ? "bg-gray-800 text-white border-gray-800"
-                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-            }`}
-          >
-            すべて
-          </button>
-          {GROUPS.map((g) => (
-            <button
-              key={g}
-              onClick={() => toggleGroup(g)}
-              className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                filterGroups.includes(g)
-                  ? GROUP_COLORS[g]
-                  : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
-              }`}
-            >
-              {g}
-            </button>
-          ))}
-          <span className="text-sm text-gray-400 ml-1">
-            {filteredHotels.length}件
-          </span>
-        </div>
+            {/* Group Filter */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-500 font-medium">絞り込み:</span>
+              <button
+                onClick={() => setFilterGroups([])}
+                className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                  filterGroups.length === 0
+                    ? "bg-gray-800 text-white border-gray-800"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                すべて
+              </button>
+              {GROUPS.map((g) => (
+                <button
+                  key={g}
+                  onClick={() => toggleGroup(g)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                    filterGroups.includes(g)
+                      ? GROUP_COLORS[g]
+                      : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+              <span className="text-sm text-gray-400 ml-1">
+                {filteredHotels.length}件
+              </span>
+            </div>
 
-        {/* Hotel List */}
-        {filteredHotels.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <div className="text-5xl mb-4">🏨</div>
-            <p className="text-base">ホテルが登録されていません</p>
-            <button
-              onClick={handleAddHotel}
-              className="mt-4 text-blue-600 hover:underline text-base"
-            >
-              ホテルを追加する
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredHotels.map((hotel) => (
-              <HotelCard
-                key={hotel.id}
-                hotel={hotel}
-                expanded={expandedHotelId === hotel.id}
-                onToggle={() =>
-                  setExpandedHotelId(
-                    expandedHotelId === hotel.id ? null : hotel.id
-                  )
-                }
-                onEdit={() => handleEditHotel(hotel)}
-                onDelete={() => handleDeleteHotel(hotel.id, hotel.name)}
-                onAddCostItem={() => handleAddCostItem(hotel.id)}
-                onEditCostItem={(item) => handleEditCostItem(hotel.id, item)}
-                onDeleteCostItem={(itemId, desc) =>
-                  handleDeleteCostItem(hotel.id, itemId, desc)
-                }
-              />
-            ))}
-          </div>
+            {/* Hotel List */}
+            {filteredHotels.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                <div className="text-5xl mb-4">🏨</div>
+                <p className="text-base">ホテルが登録されていません</p>
+                <button
+                  onClick={handleAddHotel}
+                  className="mt-4 text-blue-600 hover:underline text-base"
+                >
+                  ホテルを追加する
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredHotels.map((hotel) => (
+                  <HotelCard
+                    key={hotel.id}
+                    hotel={hotel}
+                    expanded={expandedHotelId === hotel.id}
+                    onToggle={() =>
+                      setExpandedHotelId(
+                        expandedHotelId === hotel.id ? null : hotel.id
+                      )
+                    }
+                    onEdit={() => handleEditHotel(hotel)}
+                    onDelete={() => handleDeleteHotel(hotel.id, hotel.name)}
+                    onAddCostItem={() => handleAddCostItem(hotel.id)}
+                    onEditCostItem={(item) => handleEditCostItem(hotel.id, item)}
+                    onDeleteCostItem={(itemId, desc) =>
+                      handleDeleteCostItem(hotel.id, itemId, desc)
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
+
+        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} />}
       </main>
 
       {hotelModalOpen && (
@@ -226,5 +256,28 @@ export default function Page() {
         />
       )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+        active
+          ? "border-blue-600 text-blue-600"
+          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

@@ -5,6 +5,8 @@ import {
   CostItem,
   GROUP_COLORS,
   CATEGORY_COLORS,
+  EVENT_COLORS,
+  EVENT_LABELS,
   calcHotelTotals,
   calcVariance,
   formatCurrency,
@@ -152,10 +154,16 @@ export default function HotelCard({
               <table className="w-full text-base min-w-[640px]">
                 <thead>
                   <tr className="text-sm text-gray-500 border-b border-gray-100">
+                    <th className="text-left py-2 pr-3 font-medium w-24">
+                      大会
+                    </th>
                     <th className="text-left py-2 pr-3 font-medium w-32">
                       費目
                     </th>
                     <th className="text-left py-2 pr-3 font-medium">内容</th>
+                    <th className="text-right py-2 pr-3 font-medium whitespace-nowrap">
+                      単価×人数×泊数
+                    </th>
                     <th className="text-right py-2 pr-3 font-medium whitespace-nowrap">
                       予算額
                     </th>
@@ -172,11 +180,19 @@ export default function HotelCard({
                 <tbody>
                   {hotel.costItems.map((item) => {
                     const v = calcVariance(item.budgetAmount, item.actualAmount);
+                    const hasBreakdown = item.unitPrice > 0 && item.personCount > 0 && item.nights > 0;
                     return (
                       <tr
                         key={item.id}
                         className="border-b border-gray-50 hover:bg-gray-50 group"
                       >
+                        <td className="py-2 pr-3">
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${EVENT_COLORS[item.event]}`}
+                          >
+                            {EVENT_LABELS[item.event]}
+                          </span>
+                        </td>
                         <td className="py-2 pr-3">
                           <span
                             className={`text-sm px-2 py-0.5 rounded-full whitespace-nowrap ${CATEGORY_COLORS[item.category]}`}
@@ -186,6 +202,11 @@ export default function HotelCard({
                         </td>
                         <td className="py-2 pr-3 text-gray-700">
                           {item.description}
+                        </td>
+                        <td className="py-2 pr-3 text-right text-gray-400 text-xs whitespace-nowrap tabular-nums">
+                          {hasBreakdown
+                            ? `${item.unitPrice.toLocaleString("ja-JP")} × ${item.personCount} × ${item.nights}`
+                            : "—"}
                         </td>
                         <td className="py-2 pr-3 text-right text-gray-500 whitespace-nowrap tabular-nums">
                           {formatCurrency(item.budgetAmount)}
@@ -225,7 +246,7 @@ export default function HotelCard({
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 font-semibold text-base border-t border-gray-200">
-                    <td colSpan={2} className="py-2.5 px-2 text-gray-600">
+                    <td colSpan={4} className="py-2.5 px-2 text-gray-600">
                       合計
                     </td>
                     <td className="py-2.5 pr-3 text-right text-gray-600 whitespace-nowrap tabular-nums">
