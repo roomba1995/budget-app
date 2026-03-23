@@ -221,26 +221,52 @@ export function parseContractSheet1_2(rows: any[][]): Hotel[] {
 export function parseAccumulationSheet(rows: any[][], sheetName: string): Hotel[] {
   if (!rows || rows.length === 0) return [];
 
-  const headerRowIdx = rows.findIndex((row) =>
-    Array.isArray(row)
-      ? row.some((cell) =>
-          typeof cell === "string"
-            ? /(施設名|宿泊施設|施設No\.|客室総計|一日あたり客室総額|宿泊費の合計)/.test(cell)
-            : false
-        )
-      : false
-  );
+  const scoreHeader = (row: any[]): number => {
+    if (!Array.isArray(row)) return 0;
+    const normalized = row.map((c) => String(c || "").replace(/[\s\u3000]/g, "").toLowerCase());
+    let score = 0;
 
-  if (headerRowIdx < 0) return [];
+    if (normalized.some((c) => c.includes("施設名") || c.includes("ホテル名") || c.includes("宿泊施設") || c.includes("施設番号") || c.includes("施設no"))) {
+      score += 8;
+    }
+    if (normalized.some((c) => c.includes("客室総計") || c.includes("客室総額") || c.includes("一日あたり客室総額") || c.includes("宿泊費の合計"))) {
+      score += 6;
+    }
+    if (normalized.some((c) => c.includes("ﾌｧﾝｸｼｮﾝ総計") || c.includes("ファンクション総計") || c.includes("一日あたりﾌｧﾝｸｼｮﾝ総額"))) {
+      score += 6;
+    }
+    if (normalized.some((c) => c.includes("朝食") || c.includes("夕食") || c.includes("食費") || c.includes("食事") || c.includes("通常食合計"))) {
+      score += 3;
+    }
+    if (normalized.some((c) => c.includes("営業補償"))) {
+      score += 3;
+    }
+    if (normalized.some((c) => c.includes("開始日") || c.includes("終了日") || c.includes("確保泊数") || c.includes("泊数"))) {
+      score += 2;
+    }
+    return score;
+  };
+
+  let headerRowIdx = -1;
+  let bestScore = 0;
+  rows.forEach((row, idx) => {
+    const rowScore = scoreHeader(row as any[]);
+    if (rowScore > bestScore) {
+      bestScore = rowScore;
+      headerRowIdx = idx;
+    }
+  });
+
+  if (headerRowIdx < 0 || bestScore < 6) return [];
 
   const header = (rows[headerRowIdx] || []).map((c) => String(c || "").trim());
 
-  const idxName = findHeaderIndex(header, ["施設名", "宿泊施設"]);
-  const idxFacilityNo = findHeaderIndex(header, ["施設No"]);
+  const idxName = findHeaderIndex(header, ["施設名", "ホテル名", "宿泊施設", "施設"]);
+  const idxFacilityNo = findHeaderIndex(header, ["施設番号", "施設No", "施設No."]);
   const idxLocation = findHeaderIndex(header, ["所在地", "市町村郡", "エリア"]);
   const idxRoomTotal = findHeaderIndex(header, ["客室総計", "客室総額", "一日あたり客室総額", "宿泊費の合計"]);
   const idxFunctionTotal = findHeaderIndex(header, ["ﾌｧﾝｸｼｮﾝ総計", "ファンクション総計", "一日あたりﾌｧﾝｸｼｮﾝ総額"]);
-  const idxMeal = findHeaderIndex(header, ["食費", "朝食", "夕食"]);
+  const idxMeal = findHeaderIndex(header, ["食費", "朝食", "夕食", "食事", "通常食合計"]);
   const idxBusiness = findHeaderIndex(header, ["営業補償", "営業補償等"]);
   const idxOther = findHeaderIndex(header, ["その他"]);
   const idxStart = findHeaderIndex(header, ["開始日"]);
