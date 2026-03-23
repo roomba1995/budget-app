@@ -372,6 +372,16 @@ export function useHotels() {
     );
   }, []);
 
+  const importHotels = useCallback((newHotels: Hotel[]) => {
+    setHotels(
+      newHotels.map((hotel) => ({
+        ...hotel,
+        id: hotel.id || genId(),
+        costItems: hotel.costItems || [],
+      }))
+    );
+  }, []);
+
   const resetToSample = useCallback(() => {
     setHotels(SAMPLE_HOTELS);
   }, []);
@@ -386,5 +396,6 @@ export function useHotels() {
     updateCostItem,
     deleteCostItem,
     resetToSample,
+    importHotels,
   };
 }

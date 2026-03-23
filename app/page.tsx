@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { useHotels } from "@/hooks/useHotels";
+import * as XLSX from "xlsx";
+import { parseContractSheet1_1, parseContractSheet1_2, parseAccumulationSheet } from "@/lib/contractParser";
 import { Hotel, CostItem, Group, GROUPS, GROUP_COLORS } from "@/types";
 import SummarySection from "@/components/SummarySection";
 import HotelCard from "@/components/HotelCard";
@@ -26,15 +28,59 @@ export default function Page() {
     updateCostItem,
     deleteCostItem,
     resetToSample,
+    importHotels,
   } = useHotels();
 
   const handleUpdateHotel = (id: string, updates: Partial<Omit<Hotel, "id" | "costItems">>) => {
     updateHotel(id, updates);
   };
 
+  const handleExcelUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setExcelMessage("ファイルが選択されていません。");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const arrayBuffer = e.target?.result;
+      if (!arrayBuffer) {
+        setExcelMessage("ファイルの読み込みに失敗しました。");
+        return;
+      }
+
+      try {
+        const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+        const parsed: Record<string, any[][]> = {};
+        workbook.SheetNames.forEach((sheetName) => {
+          const ws = workbook.Sheets[sheetName];
+          parsed[sheetName] = XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            raw: false,
+            defval: "",
+          });
+        });
+        setUploadedExcel(parsed);
+        setExcelMessage(`読み込み完了: ${workbook.SheetNames.length} シート (${workbook.SheetNames.join(", ")})`);
+      } catch (err) {
+        console.error(err);
+        setExcelMessage("Excel解析に失敗しました。xlsx フォーマットを確認してください。");
+      }
+    };
+    reader.onerror = () => {
+      setExcelMessage("ファイルの読み取り中にエラーが発生しました。");
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
   const [activeTab, setActiveTab] = useState<Tab>("hotels");
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
   const [expandedHotelId, setExpandedHotelId] = useState<string | null>(null);
+
+  const [uploadedExcel, setUploadedExcel] = useState<Record<string, any[][]> | null>(null);
+  const [excelMessage, setExcelMessage] = useState<string>("");
 
   const [hotelModalOpen, setHotelModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
@@ -73,6 +119,111 @@ export default function Page() {
       setExpandedHotelId(newId);
     }
     setHotelModalOpen(false);
+  };
+
+  const parseHotelsFromSheet = (rows: any[][]): Hotel[] => {
+    if (!rows || rows.length < 2) return [];
+    const header = rows[0].map((h) => String(h || "").trim().toLowerCase());
+
+    const getValue = (row: any[], key: string) => {
+      const i = header.findIndex((h) => h === key.toLowerCase());
+      return i >= 0 ? row[i] : undefined;
+    };
+
+    return rows.slice(1).map((row, idx) => {
+      const name = String(getValue(row, "name") || `ホテル ${idx + 1}`);
+      const location = String(getValue(row, "location") || "");
+      const groupsCell = String(getValue(row, "groups") || "");
+      const groups = groupsCell
+        .split(/[;,、]/)
+        .map((g) => g.trim())
+        .filter(Boolean) as Group[];
+
+      return {
+        id: String(getValue(row, "id") || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        name,
+        location,
+        groups,
+        contractStartDate: String(getValue(row, "contractstartdate") || ""),
+        contractEndDate: String(getValue(row, "contractenddate") || ""),
+        roomTypes: [],
+        costItems: [],
+        notes: String(getValue(row, "notes") || ""),
+      };
+    });
+  };
+
+  const handleImportHotels = (sheetName: string) => {
+    if (!uploadedExcel || !uploadedExcel[sheetName]) {
+      setExcelMessage("インポートするシートが見つかりません。");
+      return;
+    }
+
+    const sheetData = uploadedExcel[sheetName];
+    let hotelsFromSheet: Hotel[] = [];
+
+    // 対象積算シートの判定
+    const accumulationSheets = [
+      "【251001】アジア選手積算",
+      "【251001】パラ選手積算",
+      "【250925】アジアファミリー積算",
+      "Results【技術役員スポンサーメディア積算】",
+    ];
+
+    if (accumulationSheets.includes(sheetName)) {
+      try {
+        hotelsFromSheet = parseAccumulationSheet(sheetData, sheetName);
+        setExcelMessage(`✅ 積算シート(${sheetName})から ${hotelsFromSheet.length} 件の施設データを読み込みました。`);
+      } catch (err) {
+        console.error("積算シートパーサーエラー:", err);
+        setExcelMessage(
+          `積算シートの解析に失敗しました: ${err instanceof Error ? err.message : "Unknown error"}`
+        );
+        return;
+      }
+    } else if (sheetName.includes("別紙1-1")) {
+      // 別紙1-1形式のパーサーを使用
+      try {
+        hotelsFromSheet = parseContractSheet1_1(sheetData);
+        setExcelMessage(
+          `✅ 別紙1-1形式で ${hotelsFromSheet.length} 件のホテルデータを読み込みました。`
+        );
+      } catch (err) {
+        console.error("別紙1-1形式パーサーエラー:", err);
+        setExcelMessage(
+          `別紙1-1形式の解析に失敗しました: ${err instanceof Error ? err.message : "Unknown error"}`
+        );
+        return;
+      }
+    } else if (sheetName.includes("別紙1-2")) {
+      // 別紙1-2形式のパーサーを使用
+      try {
+        hotelsFromSheet = parseContractSheet1_2(sheetData);
+        setExcelMessage(
+          `✅ 別紙1-2形式で ${hotelsFromSheet.length} 件のホテルデータを読み込みました。`
+        );
+      } catch (err) {
+        console.error("別紙1-2形式パーサーエラー:", err);
+        setExcelMessage(
+          `別紙1-2形式の解析に失敗しました: ${err instanceof Error ? err.message : "Unknown error"}`
+        );
+        return;
+      }
+    } else {
+      // 従来のシンプル形式（name, location, groups等の列）
+      hotelsFromSheet = parseHotelsFromSheet(sheetData);
+      if (hotelsFromSheet.length === 0) {
+        setExcelMessage(
+          "シートに有効なホテルデータがありません。列名は name, location, groups, contractStartDate, contractEndDate を想定しています。"
+        );
+        return;
+      }
+      setExcelMessage(`${hotelsFromSheet.length} 件のホテルデータをインポートしました。`);
+    }
+
+    if (hotelsFromSheet.length > 0) {
+      importHotels(hotelsFromSheet);
+    }
   };
 
   const handleAddCostItem = (hotelId: string) => {
@@ -139,6 +290,27 @@ export default function Page() {
             >
               サンプルリセット
             </button>
+            <label className="text-sm text-gray-600 px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 cursor-pointer">
+              Excelアップロード
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleExcelUpload}
+              />
+            </label>
+            <button
+              onClick={() => {
+                if (uploadedExcel) {
+                  const firstSheet = Object.keys(uploadedExcel)[0];
+                  if (firstSheet) handleImportHotels(firstSheet);
+                }
+              }}
+              className="text-sm text-gray-600 px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
+              disabled={!uploadedExcel}
+            >
+              先頭シートをホテルにインポート
+            </button>
             {activeTab === "hotels" && (
               <button
                 onClick={handleAddHotel}
@@ -195,6 +367,30 @@ export default function Page() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        {excelMessage && (
+          <div className="rounded-md bg-blue-50 border border-blue-100 p-3 text-sm text-blue-800">
+            {excelMessage}
+          </div>
+        )}
+
+        {uploadedExcel && (
+          <section className="rounded-md bg-white border border-gray-200 p-3">
+            <h2 className="text-sm font-semibold mb-2">読み込み済みシート</h2>
+            <div className="text-sm text-gray-700">
+              {Object.keys(uploadedExcel).map((sheetName) => (
+                <div key={sheetName} className="mb-1">
+                  <button
+                    onClick={() => handleImportHotels(sheetName)}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 mr-2"
+                  >
+                    {sheetName} をインポート
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {activeTab === "hotels" && (
           <>
             {/* Summary */}
