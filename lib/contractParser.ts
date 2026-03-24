@@ -308,7 +308,7 @@ export function parseAccumulationSheet(rows: any[][], sheetName: string): Hotel[
         facilityNo: facilityNo || undefined,
         name: name || `施設 ${rowIdx}`,
         location,
-        groups: [event === "asia" ? "選手団" : "技術役員"],
+        groups: [event === "asia" ? "アジア選手団" : "パラ選手団"],
         contractStartDate: startDate || "",
         contractEndDate: endDate || "",
         roomTypes: [],
