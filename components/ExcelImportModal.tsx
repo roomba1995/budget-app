@@ -44,14 +44,14 @@ function parseHotelsFromSheet(sheet: XLSX.WorkSheet): Hotel[] {
   const hotels: Hotel[] = [];
 
   for (const row of rows) {
-    const facilityNo = row[1]; // B列
-    const name = row[2];       // C列
+    const facilityNo = row[0]; // A列: 施設番号
+    const name = row[1];       // B列: 施設名
 
     // 施設名が空の行はスキップ
     if (!name || String(name).trim() === "") continue;
     // 施設名が文字列でない（ヘッダー行等）はスキップ
     const nameStr = String(name).trim();
-    if (nameStr === "施設名" || nameStr === "名称") continue;
+    if (nameStr === "施設名" || nameStr === "名称" || nameStr === "施設番号") continue;
 
     // D〜M列の有無でグループを決定（重複除去）
     const groupSet = new Set<Group>();
@@ -152,8 +152,8 @@ export default function ExcelImportModal({ onImport, onClose }: Props) {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm font-medium text-blue-800 mb-2">読み込む列の構成</p>
             <div className="grid grid-cols-2 gap-1 text-xs text-blue-700">
-              <div>B列: 施設番号</div>
-              <div>C列: 施設名</div>
+              <div>A列: 施設番号</div>
+              <div>B列: 施設名</div>
               {Object.entries(COLUMN_LABELS).map(([col, label]) => (
                 <div key={col}>
                   {String.fromCharCode(64 + Number(col))}列: {label}
