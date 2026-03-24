@@ -4,31 +4,32 @@ import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Hotel, Group } from "@/types";
 
-// D列(index3)〜M列(index12) → グループのマッピング
+// C列(index2)〜L列(index11) → グループのマッピング
+// A列: 施設番号, B列: 施設名, C列以降: 配宿グループ
 const COLUMN_GROUP_MAP: Record<number, Group> = {
-  3: "選手団",   // D: アジア選手
-  4: "選手団",   // E: パラ選手
-  5: "ファミリー", // F: アジアファミリー
-  6: "ファミリー", // G: パラファミリー
-  7: "技術役員",  // H: アジア技術役員
-  8: "スポンサー", // I: アジアスポンサー
-  9: "メディア",  // J: アジアメディア
-  10: "技術役員", // K: パラ技術役員
-  11: "スポンサー",// L: パラスポンサー
-  12: "メディア", // M: パラメディア
+  2: "アジア選手団",  // C: アジア選手
+  3: "パラ選手団",   // D: パラ選手
+  4: "アジアファミリー", // E: アジアファミリー
+  5: "パラファミリー",  // F: パラファミリー
+  6: "アジア技術役員",  // G: アジア技術役員
+  7: "アジアスポンサー", // H: アジアスポンサー
+  8: "アジアメディア",  // I: アジアメディア
+  9: "パラ技術役員",   // J: パラ技術役員
+  10: "パラスポンサー", // K: パラスポンサー
+  11: "パラメディア",  // L: パラメディア
 };
 
 const COLUMN_LABELS: Record<number, string> = {
-  3: "アジア選手",
-  4: "パラ選手",
-  5: "アジアファミリー",
-  6: "パラファミリー",
-  7: "アジア技術役員",
-  8: "アジアスポンサー",
-  9: "アジアメディア",
-  10: "パラ技術役員",
-  11: "パラスポンサー",
-  12: "パラメディア",
+  2: "アジア選手",
+  3: "パラ選手",
+  4: "アジアファミリー",
+  5: "パラファミリー",
+  6: "アジア技術役員",
+  7: "アジアスポンサー",
+  8: "アジアメディア",
+  9: "パラ技術役員",
+  10: "パラスポンサー",
+  11: "パラメディア",
 };
 
 function genId(): string {
@@ -156,7 +157,7 @@ export default function ExcelImportModal({ onImport, onClose }: Props) {
               <div>B列: 施設名</div>
               {Object.entries(COLUMN_LABELS).map(([col, label]) => (
                 <div key={col}>
-                  {String.fromCharCode(64 + Number(col))}列: {label}
+                  {String.fromCharCode(65 + Number(col))}列: {label}
                 </div>
               ))}
             </div>

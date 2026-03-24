@@ -1,9 +1,14 @@
 export const GROUPS = [
-  "選手団",
-  "技術役員",
-  "ファミリー",
-  "スポンサー",
-  "メディア",
+  "アジア選手団",
+  "パラ選手団",
+  "アジアファミリー",
+  "パラファミリー",
+  "アジア技術役員",
+  "パラ技術役員",
+  "アジアスポンサー",
+  "パラスポンサー",
+  "アジアメディア",
+  "パラメディア",
   "WF",
 ] as const;
 export type Group = (typeof GROUPS)[number];
@@ -62,20 +67,30 @@ export const CONTRACT_STATUS_COLORS: Record<ContractStatus, string> = {
 };
 
 export const GROUP_COLORS: Record<Group, string> = {
-  選手団: "bg-blue-100 text-blue-800 border border-blue-200",
-  技術役員: "bg-purple-100 text-purple-800 border border-purple-200",
-  ファミリー: "bg-pink-100 text-pink-800 border border-pink-200",
-  スポンサー: "bg-yellow-100 text-yellow-800 border border-yellow-200",
-  メディア: "bg-orange-100 text-orange-800 border border-orange-200",
+  アジア選手団: "bg-blue-100 text-blue-800 border border-blue-200",
+  パラ選手団: "bg-sky-100 text-sky-800 border border-sky-200",
+  アジアファミリー: "bg-pink-100 text-pink-800 border border-pink-200",
+  パラファミリー: "bg-rose-100 text-rose-800 border border-rose-200",
+  アジア技術役員: "bg-purple-100 text-purple-800 border border-purple-200",
+  パラ技術役員: "bg-violet-100 text-violet-800 border border-violet-200",
+  アジアスポンサー: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+  パラスポンサー: "bg-amber-100 text-amber-800 border border-amber-200",
+  アジアメディア: "bg-orange-100 text-orange-800 border border-orange-200",
+  パラメディア: "bg-red-100 text-red-800 border border-red-200",
   WF: "bg-green-100 text-green-800 border border-green-200",
 };
 
 export const GROUP_BG: Record<Group, string> = {
-  選手団: "bg-blue-500",
-  技術役員: "bg-purple-500",
-  ファミリー: "bg-pink-500",
-  スポンサー: "bg-yellow-500",
-  メディア: "bg-orange-500",
+  アジア選手団: "bg-blue-500",
+  パラ選手団: "bg-sky-500",
+  アジアファミリー: "bg-pink-500",
+  パラファミリー: "bg-rose-500",
+  アジア技術役員: "bg-purple-500",
+  パラ技術役員: "bg-violet-500",
+  アジアスポンサー: "bg-yellow-500",
+  パラスポンサー: "bg-amber-500",
+  アジアメディア: "bg-orange-500",
+  パラメディア: "bg-red-500",
   WF: "bg-green-500",
 };
 
