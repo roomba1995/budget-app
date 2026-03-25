@@ -374,6 +374,8 @@ function HotelDetailInner() {
   const { hotels, initialized, addCostItem, updateCostItem, deleteCostItem, updateHotel } =
     useHotels();
   const [hotelEditOpen, setHotelEditOpen] = useState(false);
+  const [facilityInfoOpen, setFacilityInfoOpen] = useState(false);
+  const [functionRoomOpen, setFunctionRoomOpen] = useState(false);
 
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
   const [hotelDropdownOpen, setHotelDropdownOpen] = useState(false);
@@ -569,109 +571,170 @@ function HotelDetailInner() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-        {/* ── Hotel info card ── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={() => setHotelEditOpen(true)}
-              className="text-xs text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors flex items-center gap-1"
-            >
-              ✏️ ホテル情報を編集
-            </button>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-            <div className="flex-1 space-y-2.5">
-              {hotel.groups.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {hotel.groups.map((g) => (
-                    <span
-                      key={g}
-                      className={`text-xs px-2 py-0.5 rounded-full ${GROUP_COLORS[g]}`}
-                    >
-                      {g}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-600">
-                {hotel.location && <span>📍 {hotel.location}</span>}
-                <span>
-                  📅{" "}
-                  {formatDateRange(
-                    hotel.contractStartDate,
-                    hotel.contractEndDate
-                  )}
-                </span>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+
+        {/* ── KPI cards ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {/* 提供客室 / 保有客室 */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-xl">🏨</div>
+            <div>
+              <div className="text-xs text-gray-500 mb-0.5">提供客室 / 保有客室</div>
+              <div className="tabular-nums font-bold text-lg text-blue-600">
+                {hotel.offeredRooms ?? "—"}
+                <span className="text-gray-400 font-normal text-sm mx-1">/</span>
+                <span className="text-gray-700">{hotel.totalRooms ?? "—"}</span>
               </div>
-              {/* 客室数サマリ — 常時表示 */}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                <span className="bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
-                  🛏 客室: 保有 {hotel.totalRooms != null ? `${hotel.totalRooms}室` : "—"} / 提供 {hotel.offeredRooms != null ? `${hotel.offeredRooms}室` : "—"}
-                </span>
-                <span className="bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
-                  🏛 ファンクション: 保有 {hotel.totalFunctionRooms != null ? `${hotel.totalFunctionRooms}室` : "—"} / 提供 {hotel.offeredFunctionRooms != null ? `${hotel.offeredFunctionRooms}室` : "—"}
-                </span>
-              </div>
-              {hotel.roomTypes.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {hotel.roomTypes.map((r) => (
-                    <span
-                      key={r.id}
-                      className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full"
-                    >
-                      🛏 {r.typeName} × {r.contractQuantity}室
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-            {hotel.notes && (
-              <div className="sm:max-w-xs px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-700 leading-relaxed">
-                📝 {hotel.notes}
+          </div>
+          {/* 予算総額 */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 text-xl">💴</div>
+            <div>
+              <div className="text-xs text-gray-500 mb-0.5">予算総額</div>
+              <div className="text-base font-bold text-gray-800 tabular-nums">{formatCurrency(totals.budget)}</div>
+            </div>
+          </div>
+          {/* 実績額 */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 text-xl">📊</div>
+            <div>
+              <div className="text-xs text-gray-500 mb-0.5">実績額</div>
+              <div className="text-base font-bold text-gray-800 tabular-nums">{formatCurrency(totals.actual)}</div>
+            </div>
+          </div>
+          {/* 予実乖離 */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0 text-xl">📉</div>
+            <div>
+              <div className="text-xs text-gray-500 mb-0.5">予実乖離</div>
+              <div className={`text-base font-bold tabular-nums ${variance.className}`}>{variance.text}</div>
+            </div>
+          </div>
+          {/* 執行済額 */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 text-xl">✅</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-gray-500 mb-0.5">執行済額</div>
+              <div className="text-base font-bold text-gray-800 tabular-nums">{formatCurrency(executedTotal)}</div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${executionPct}%` }} />
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">{executionPct}%</span>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* ── KPI cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="text-xs text-gray-500 mb-1.5">予算総額</div>
-            <div className="text-xl font-bold text-gray-800 tabular-nums">
-              {formatCurrency(totals.budget)}
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="text-xs text-gray-500 mb-1.5">実績額</div>
-            <div className="text-xl font-bold text-gray-800 tabular-nums">
-              {formatCurrency(totals.actual)}
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="text-xs text-gray-500 mb-1.5">予実乖離</div>
-            <div
-              className={`text-xl font-bold tabular-nums ${variance.className}`}
+        {/* ── Accordion: 施設情報 ＋ ファンクションルーム ── */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+          {/* 施設情報 */}
+          <div>
+            <button
+              onClick={() => setFacilityInfoOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
             >
-              {variance.text}
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="text-xs text-gray-500 mb-1.5">執行済額</div>
-            <div className="text-xl font-bold text-gray-800 tabular-nums">
-              {formatCurrency(executedTotal)}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-400 rounded-full transition-all"
-                  style={{ width: `${executionPct}%` }}
-                />
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm transition-transform duration-200" style={{ display: "inline-block", transform: facilityInfoOpen ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+                <span className="text-sm font-semibold text-gray-700">施設情報</span>
+                {hotel.contractStatus && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${CONTRACT_STATUS_COLORS[hotel.contractStatus]}`}>{hotel.contractStatus}</span>
+                )}
               </div>
-              <span className="text-xs text-gray-400 flex-shrink-0">
-                {executionPct}%
-              </span>
-            </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setHotelEditOpen(true); }}
+                className="text-xs text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors"
+                title="施設情報を編集"
+              >
+                ✏️
+              </button>
+            </button>
+            {facilityInfoOpen && (
+              <div className="px-5 pb-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                  {hotel.location && (
+                    <div className="flex gap-2">
+                      <span className="text-gray-400 flex-shrink-0">📍</span>
+                      <span className="text-gray-700">{hotel.location}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <span className="text-gray-400 flex-shrink-0">📅</span>
+                    <span className="text-gray-700">{formatDateRange(hotel.contractStartDate, hotel.contractEndDate)}</span>
+                  </div>
+                  {hotel.facilityNo && (
+                    <div className="flex gap-2">
+                      <span className="text-gray-400 flex-shrink-0">🔢</span>
+                      <span className="font-mono text-gray-700">施設番号: {hotel.facilityNo}</span>
+                    </div>
+                  )}
+                </div>
+                {hotel.groups.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {hotel.groups.map((g) => (
+                      <span key={g} className={`text-xs px-2 py-0.5 rounded-full ${GROUP_COLORS[g]}`}>{g}</span>
+                    ))}
+                  </div>
+                )}
+                {hotel.roomTypes.length > 0 && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1.5">客室タイプ</div>
+                    <div className="flex flex-wrap gap-2">
+                      {hotel.roomTypes.map((r) => (
+                        <span key={r.id} className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full">
+                          🛏 {r.typeName} × {r.contractQuantity}室
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {hotel.notes && (
+                  <div className="px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-700 leading-relaxed">
+                    📝 {hotel.notes}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ファンクションルーム */}
+          <div>
+            <button
+              onClick={() => setFunctionRoomOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm transition-transform duration-200" style={{ display: "inline-block", transform: functionRoomOpen ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+                <span className="text-sm font-semibold text-gray-700">ファンクションルーム</span>
+                <span className="text-xs text-gray-500">
+                  保有: {hotel.totalFunctionRooms ?? "—"} / 提供: {hotel.offeredFunctionRooms ?? "—"}
+                </span>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setHotelEditOpen(true); }}
+                className="text-xs text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors"
+                title="ファンクションルーム情報を編集"
+              >
+                ✏️
+              </button>
+            </button>
+            {functionRoomOpen && (
+              <div className="px-5 pb-4">
+                <div className="grid grid-cols-2 gap-4 max-w-xs">
+                  <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 text-center">
+                    <div className="text-xs text-purple-500 mb-1">保有室数</div>
+                    <div className="text-2xl font-bold text-purple-700 tabular-nums">{hotel.totalFunctionRooms ?? "—"}</div>
+                    {hotel.totalFunctionRooms != null && <div className="text-xs text-purple-400">室</div>}
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center">
+                    <div className="text-xs text-blue-500 mb-1">提供室数</div>
+                    <div className="text-2xl font-bold text-blue-700 tabular-nums">{hotel.offeredFunctionRooms ?? "—"}</div>
+                    {hotel.offeredFunctionRooms != null && <div className="text-xs text-blue-400">室</div>}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
