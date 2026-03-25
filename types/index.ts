@@ -149,12 +149,76 @@ export interface Hotel {
   notes: string;
   /** 保有客室数 */
   totalRooms?: number;
+  /** 収容可能人数（保有） */
+  totalCapacity?: number;
   /** 提供客室数 */
   offeredRooms?: number;
+  /** 収容可能人数（提供） */
+  offeredCapacity?: number;
   /** ファンクションルーム 保有室数 */
   totalFunctionRooms?: number;
   /** ファンクションルーム 提供室数 */
   offeredFunctionRooms?: number;
+  /** ファンクション利用想定数 */
+  functionRoomEstimate?: number;
+  /** エリア（名古屋・尾張・知多・西三河・東三河・県外） */
+  area?: string;
+  /** 市町村郡 */
+  municipality?: string;
+  /** ジム */
+  hasGym?: boolean;
+  /** サウナ */
+  hasSauna?: boolean;
+  /** コインランドリー */
+  hasLaundry?: boolean;
+  /** 乗降場 */
+  boardingArea?: string;
+  /** 貸切想定 */
+  exclusiveUse?: string;
+  /** 食事提供難易度 */
+  mealDifficulty?: string;
+  /** 食事提供主体想定 */
+  mealProvider?: string;
+  /** 朝食会場座席数 */
+  breakfastSeats?: number;
+  /** 配宿競技 */
+  assignedSport?: string;
+  /** 配宿競技 会場 */
+  assignedVenue?: string;
+  /** 人数 */
+  assignedPersonCount?: number;
+  /** 施設別人数 */
+  facilityPersonCount?: number;
+  /** 利用想定客室数 */
+  utilizedRooms?: number;
+  /** 平均宿泊人数 */
+  avgOccupancy?: number;
+  /** 一人あたり平均単価（税込） */
+  avgPricePerPerson?: number;
+  /** 1室あたり単価（税込） */
+  pricePerRoom?: number;
+  /** 客室単価幅 最低（税抜） */
+  minRoomPrice?: number;
+  /** 客室単価幅 最高（税抜） */
+  maxRoomPrice?: number;
+  /** 変動有無 */
+  priceFluctuation?: string;
+  /** 見積もり取得状況 */
+  estimateStatus?: string;
+  /** 朝食単価 */
+  breakfastUnitPrice?: number;
+  /** 受領見積単価（通常） */
+  normalRoomUnitPrice?: number;
+  /** 受領見積単価（ハラルヴィーガン） */
+  halalRoomUnitPrice?: number;
+  /** ハラル支援 */
+  halalSupport?: string;
+  /** 入湯税/宿泊税 */
+  bathTax?: number;
+  /** テナントの数（ショップ含む） */
+  tenantCount?: number;
+  /** キャンセルポリシー概要 */
+  cancellationPolicy?: string;
 }
 
 export interface HotelSnapshot {
