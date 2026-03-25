@@ -164,22 +164,46 @@ function loadHidden(): Set<string> {
   }
 }
 
-/** Apply label/order overrides from admin config */
+/** Apply label/order overrides from admin config.
+ *  Matching strategy: ID first, then normalized-label fallback.
+ *  This handles cases where the user accidentally cleared/changed IDs in Excel. */
 function applyColConfig(defs: ColDef[]): ColDef[] {
   try {
     const s = localStorage.getItem(COL_CONFIG_KEY);
     if (!s) return defs;
     const cfg: ColConfig[] = JSON.parse(s);
-    const map = new Map(cfg.map((c) => [c.id, c]));
+
+    // Normalize label: strip newlines and extra spaces for fuzzy matching
+    const norm = (l: string) => l.replace(/\n/g, "").trim();
+
+    // Build fallback map: normalized original label → ColDef
+    const origLabelMap = new Map<string, ColDef>();
+    for (const d of defs) origLabelMap.set(norm(d.label), d);
+
+    // Resolve each config entry to the ColDef id it corresponds to
+    const resolved = new Map<string, ColConfig>(); // key = ColDef.id
+    for (const c of cfg) {
+      // 1) Try exact ID match
+      if (defs.some((d) => d.id === c.id)) {
+        resolved.set(c.id, c);
+        continue;
+      }
+      // 2) Fallback: match by normalized label against original COL_DEF labels
+      const byLabel = origLabelMap.get(norm(c.label));
+      if (byLabel && !resolved.has(byLabel.id)) {
+        resolved.set(byLabel.id, { ...c, id: byLabel.id });
+      }
+    }
+
     return [...defs]
       .map((d) => {
-        const ov = map.get(d.id);
+        const ov = resolved.get(d.id);
         if (!ov) return d;
         return { ...d, label: ov.label, ...(ov.group ? { group: ov.group } : {}) };
       })
       .sort((a, b) => {
-        const oa = map.get(a.id)?.order ?? 9999;
-        const ob = map.get(b.id)?.order ?? 9999;
+        const oa = resolved.get(a.id)?.order ?? 9999;
+        const ob = resolved.get(b.id)?.order ?? 9999;
         return oa - ob;
       });
   } catch {

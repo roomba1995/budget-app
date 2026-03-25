@@ -275,33 +275,49 @@ export default function AdminPage() {
             </p>
           </div>
           {/* 現在保存されている列設定プレビュー */}
-          {colPreview.length > 0 && (
-            <div className="px-5 pb-4 mt-3">
-              <div className="text-xs font-medium text-gray-500 mb-2">現在保存されている列設定（{colPreview.length}列）</div>
-              <div className="overflow-x-auto max-h-48 overflow-y-auto border border-gray-100 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-gray-50">
-                    <tr className="border-b border-gray-100">
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 w-8">順</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">id</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">label</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">group</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...colPreview].sort((a, b) => a.order - b.order).map((c) => (
-                      <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="px-3 py-1.5 text-gray-400 tabular-nums">{c.order}</td>
-                        <td className="px-3 py-1.5 font-mono text-gray-500">{c.id}</td>
-                        <td className="px-3 py-1.5 text-gray-800">{c.label}</td>
-                        <td className="px-3 py-1.5 text-gray-500">{c.group ?? "—"}</td>
+          {colPreview.length > 0 && (() => {
+            const knownIds = new Set(DEFAULT_COL_LABELS.map((d) => d.id));
+            const normLabel = (l: string) => l.replace(/\n/g, "").trim();
+            const knownLabels = new Set(DEFAULT_COL_LABELS.map((d) => normLabel(d.label)));
+            const badRows = colPreview.filter((c) => !knownIds.has(c.id) && !knownLabels.has(normLabel(c.label)));
+            return (
+              <div className="px-5 pb-4 mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-gray-500">現在保存されている列設定（{colPreview.length}列）</span>
+                  {badRows.length > 0 && (
+                    <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                      ⚠ {badRows.length}行のIDが不明（ラベルでフォールバック適用）
+                    </span>
+                  )}
+                </div>
+                <div className="overflow-x-auto max-h-48 overflow-y-auto border border-gray-100 rounded-lg">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-gray-50">
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-medium text-gray-500 w-8">順</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-500">id</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-500">label</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-500">group</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {[...colPreview].sort((a, b) => a.order - b.order).map((c) => {
+                        const isUnknown = !knownIds.has(c.id) && !knownLabels.has(normLabel(c.label));
+                        return (
+                          <tr key={c.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isUnknown ? "bg-amber-50" : ""}`}>
+                            <td className="px-3 py-1.5 text-gray-400 tabular-nums">{c.order}</td>
+                            <td className={`px-3 py-1.5 font-mono ${isUnknown ? "text-amber-600" : "text-gray-500"}`}>{c.id}</td>
+                            <td className="px-3 py-1.5 text-gray-800">{c.label}</td>
+                            <td className="px-3 py-1.5 text-gray-500">{c.group ?? "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* 施設管理セクション */}
