@@ -164,34 +164,142 @@ function loadHidden(): Set<string> {
   }
 }
 
+/** Map all known label variations (current + historical) → COL_DEF id.
+ *  Required because DEFAULT_COL_LABELS has changed over time, and users may
+ *  have CSV files downloaded with older label names. */
+const LABEL_TO_ID: Record<string, string> = {
+  // 基本情報
+  "エリア": "area",
+  "市町村郡": "municipality",
+  "施設番号": "facilityNo",
+  "施設\n番号": "facilityNo",
+  "所在地": "location",
+  // 客室数
+  "保有客室数": "totalRooms",
+  "保有\n客室数": "totalRooms",
+  "収容人数(保有)": "totalCapacity",
+  "収容\n人数(保有)": "totalCapacity",
+  "提供客室数": "offeredRooms",
+  "提供\n客室数": "offeredRooms",
+  "収容人数(提供)": "offeredCapacity",
+  "収容\n人数(提供)": "offeredCapacity",
+  "利用想定客室数": "utilizedRooms",
+  "利用想定\n客室数": "utilizedRooms",
+  "平均宿泊人数": "avgOccupancy",
+  "平均\n宿泊人数": "avgOccupancy",
+  // ファンクション
+  "ファンクション保有": "totalFunctionRooms",
+  "ファンクション\n保有": "totalFunctionRooms",
+  "ファンクション保有室数": "totalFunctionRooms",  // old
+  "ファンクション提供": "offeredFunctionRooms",
+  "ファンクション\n提供": "offeredFunctionRooms",
+  "ファンクション提供室数": "offeredFunctionRooms",  // old
+  "ファンクション利用想定": "functionRoomEstimate",
+  "ファンクション\n利用想定": "functionRoomEstimate",
+  "ファンクション見積額": "functionRoomEstimate",  // old
+  // 設備
+  "ジム": "hasGym",
+  "サウナ": "hasSauna",
+  "コインランドリー": "hasLaundry",
+  "コイン\nランドリー": "hasLaundry",
+  "乗降場": "boardingArea",
+  "乗降エリア": "boardingArea",  // old
+  "貸切想定": "exclusiveUse",
+  "専有利用": "exclusiveUse",  // old
+  "テナント数": "tenantCount",
+  // 食事
+  "食事提供難易度": "mealDifficulty",
+  "食事提供\n難易度": "mealDifficulty",
+  "食事難易度": "mealDifficulty",  // old
+  "食事提供主体": "mealProvider",
+  "食事提供\n主体": "mealProvider",
+  "食事提供者": "mealProvider",  // old
+  "朝食会場座席数": "breakfastSeats",
+  "朝食会場\n座席数": "breakfastSeats",
+  "朝食席数": "breakfastSeats",  // old
+  "朝食単価": "breakfastUnitPrice",
+  "ハラル支援": "halalSupport",
+  "ハラル\n支援": "halalSupport",
+  "ハラール対応": "halalSupport",  // old
+  // 配宿情報
+  "配宿競技": "assignedSport",
+  "会場": "assignedVenue",
+  "配宿会場": "assignedVenue",  // old
+  "人数": "assignedPersonCount",
+  "配宿人数": "assignedPersonCount",  // old
+  "施設別人数": "facilityPersonCount",
+  "施設別\n人数": "facilityPersonCount",
+  "施設内人数": "facilityPersonCount",  // old
+  // 料金
+  "見積取得状況": "estimateStatus",
+  "見積取得\n状況": "estimateStatus",
+  "見積状況": "estimateStatus",  // old
+  "見積単価（通常）": "normalRoomUnitPrice",
+  "見積単価\n（通常）": "normalRoomUnitPrice",
+  "通常客室単価": "normalRoomUnitPrice",  // old
+  "見積単価（ハラル）": "halalRoomUnitPrice",
+  "見積単価\n（ハラル）": "halalRoomUnitPrice",
+  "ハラール客室単価": "halalRoomUnitPrice",  // old
+  "1室単価（税込）": "pricePerRoom",
+  "1室単価\n（税込）": "pricePerRoom",
+  "室料単価": "pricePerRoom",  // old
+  "単価幅最低（税抜）": "minRoomPrice",
+  "単価幅最低\n（税抜）": "minRoomPrice",
+  "最低客室単価": "minRoomPrice",  // old
+  "単価幅最高（税抜）": "maxRoomPrice",
+  "単価幅最高\n（税抜）": "maxRoomPrice",
+  "最高客室単価": "maxRoomPrice",  // old
+  "変動有無": "priceFluctuation",
+  "変動\n有無": "priceFluctuation",
+  "料金変動": "priceFluctuation",  // old
+  "入湯税/宿泊税": "bathTax",
+  "入湯税\n/宿泊税": "bathTax",
+  "入湯税": "bathTax",  // old
+  "キャンセルポリシー": "cancellationPolicy",
+  "キャンセル\nポリシー": "cancellationPolicy",
+  // 日程・集計
+  "CI": "ci",
+  "チェックイン": "ci",  // old
+  "CO": "co",
+  "チェックアウト": "co",  // old
+  "確保泊数": "nights",
+  "確保\n泊数": "nights",
+  "宿泊夜数": "nights",  // old
+  "1日あたり客室費（予算）": "dailyRoomBudget",
+  "1日あたり\n客室費（予算）": "dailyRoomBudget",
+  "客室総計（予算）": "roomBudgetTotal",
+  "客室総計\n（予算）": "roomBudgetTotal",
+  "客室確保費(予算)": "roomBudgetTotal",  // old
+  "客室総計（実績）": "roomActualTotal",
+  "客室総計\n（実績）": "roomActualTotal",
+  "客室確保費(実績)": "roomActualTotal",  // old
+  "ファンクション総計（予算）": "funcBudgetTotal",
+  "ファンクション\n総計（予算）": "funcBudgetTotal",
+  "会議室等確保費(予算)": "funcBudgetTotal",  // old
+};
+
 /** Apply label/order overrides from admin config.
- *  Matching strategy: ID first, then normalized-label fallback.
- *  This handles cases where the user accidentally cleared/changed IDs in Excel. */
+ *  Matching priority: 1) exact ID, 2) normalized label vs LABEL_TO_ID map (covers all historical labels) */
 function applyColConfig(defs: ColDef[]): ColDef[] {
   try {
     const s = localStorage.getItem(COL_CONFIG_KEY);
     if (!s) return defs;
     const cfg: ColConfig[] = JSON.parse(s);
 
-    // Normalize label: strip newlines and extra spaces for fuzzy matching
     const norm = (l: string) => l.replace(/\n/g, "").trim();
 
-    // Build fallback map: normalized original label → ColDef
-    const origLabelMap = new Map<string, ColDef>();
-    for (const d of defs) origLabelMap.set(norm(d.label), d);
-
-    // Resolve each config entry to the ColDef id it corresponds to
+    // Resolve each config entry → ColDef.id
     const resolved = new Map<string, ColConfig>(); // key = ColDef.id
     for (const c of cfg) {
-      // 1) Try exact ID match
+      // 1) Exact ID match
       if (defs.some((d) => d.id === c.id)) {
         resolved.set(c.id, c);
         continue;
       }
-      // 2) Fallback: match by normalized label against original COL_DEF labels
-      const byLabel = origLabelMap.get(norm(c.label));
-      if (byLabel && !resolved.has(byLabel.id)) {
-        resolved.set(byLabel.id, { ...c, id: byLabel.id });
+      // 2) Label lookup in comprehensive alias map (handles all historical label versions)
+      const targetId = LABEL_TO_ID[norm(c.label)];
+      if (targetId && defs.some((d) => d.id === targetId) && !resolved.has(targetId)) {
+        resolved.set(targetId, { ...c, id: targetId });
       }
     }
 
@@ -357,6 +465,14 @@ export default function GroupAllocationView({ hotels }: Props) {
           </h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400">{groupHotels.length}件</span>
+            {/* 列設定再適用ボタン */}
+            <button
+              onClick={() => setActiveDefs(applyColConfig(COL_DEFS))}
+              title="管理画面でインポートした列設定を再読み込みします"
+              className="text-xs px-2 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors"
+            >
+              🔄 設定再適用
+            </button>
             {/* 列設定ボタン */}
             <div className="relative" ref={panelRef}>
               <button
