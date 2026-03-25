@@ -278,9 +278,25 @@ export const LABEL_TO_ID: Record<string, string> = {
   "会議室等確保費(予算)": "funcBudgetTotal",  // old
 };
 
+/** Normalize a label for robust matching:
+ *  - removes CR/LF
+ *  - converts full-width parens （）→ half-width ()
+ *  - converts full-width space → regular space
+ *  - trims whitespace */
+function normLabel(l: string): string {
+  return l
+    .replace(/[\r\n]/g, "")
+    .replace(/（/g, "(").replace(/）/g, ")")
+    .replace(/\u3000/g, " ")
+    .trim();
+}
+
 /** Apply label/order overrides from admin config.
  *  Only returns columns present in the config; columns absent from config are excluded.
- *  Matching priority: 1) exact ID, 2) normalized label vs LABEL_TO_ID map (covers all historical labels) */
+ *  Matching priority:
+ *    1) exact ID match
+ *    2) LABEL_TO_ID lookup (with full↔half-width normalization)
+ *    3) direct COL_DEF label match (normalized) */
 function applyColConfig(defs: ColDef[]): ColDef[] {
   try {
     const s = localStorage.getItem(COL_CONFIG_KEY);
@@ -288,20 +304,36 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
     const cfg: ColConfig[] = JSON.parse(s);
     if (!cfg.length) return defs;
 
-    const norm = (l: string) => l.replace(/\n/g, "").trim();
+    // Build normalized-key version of LABEL_TO_ID (handles full↔half-width parens)
+    const normalizedLabelMap: Record<string, string> = {};
+    for (const [k, v] of Object.entries(LABEL_TO_ID)) {
+      normalizedLabelMap[normLabel(k)] = v;
+    }
+
+    // Build direct COL_DEF label lookup (normalized) as last resort
+    const colDefByLabel = new Map<string, string>(); // normalized label → col id
+    for (const d of defs) {
+      const nl = normLabel(d.label);
+      if (!colDefByLabel.has(nl)) colDefByLabel.set(nl, d.id);
+    }
 
     // Resolve each config entry → ColDef.id
     const resolved = new Map<string, ColConfig>(); // key = ColDef.id
     for (const c of cfg) {
+      const nl = normLabel(c.label);
       // 1) Exact ID match
       if (defs.some((d) => d.id === c.id)) {
-        resolved.set(c.id, c);
-        continue;
+        resolved.set(c.id, c); continue;
       }
-      // 2) Label lookup in comprehensive alias map (handles all historical label versions)
-      const targetId = LABEL_TO_ID[norm(c.label)];
+      // 2) LABEL_TO_ID lookup (normalized — handles full↔half-width parens)
+      const targetId = normalizedLabelMap[nl];
       if (targetId && defs.some((d) => d.id === targetId) && !resolved.has(targetId)) {
-        resolved.set(targetId, { ...c, id: targetId });
+        resolved.set(targetId, { ...c, id: targetId }); continue;
+      }
+      // 3) Direct COL_DEF label match (catches anything LABEL_TO_ID doesn't cover)
+      const directId = colDefByLabel.get(nl);
+      if (directId && !resolved.has(directId)) {
+        resolved.set(directId, { ...c, id: directId });
       }
     }
 

@@ -76,14 +76,30 @@ function parseCSVLine(line: string): string[] {
 }
 
 const KNOWN_COL_IDS = new Set(DEFAULT_COL_LABELS.map((d) => d.id));
-const norm = (l: string) => l.replace(/\n/g, "").trim();
+
+/** Normalize a label for robust matching (mirrors GroupAllocationView.normLabel) */
+const norm = (l: string) => l
+  .replace(/[\r\n]/g, "")
+  .replace(/（/g, "(").replace(/）/g, ")")
+  .replace(/\u3000/g, " ")
+  .trim();
+
+// Build normalized-key lookup from LABEL_TO_ID (handles full↔half-width parens)
+const NORM_LABEL_TO_ID: Record<string, string> = {};
+for (const [k, v] of Object.entries(LABEL_TO_ID)) {
+  NORM_LABEL_TO_ID[norm(k)] = v;
+}
 
 /** Resolve a config entry's id to the canonical COL_DEF id.
- *  Uses LABEL_TO_ID so old/corrupted IDs (e.g. custom_配宿競技) are correctly resolved. */
+ *  Priority: 1) exact ID, 2) LABEL_TO_ID (normalized), 3) direct DEFAULT_COL_LABELS label match */
 function resolveColId(id: string, label: string): string {
   if (KNOWN_COL_IDS.has(id)) return id;
-  const byLabel = LABEL_TO_ID[norm(label)];
+  const nl = norm(label);
+  const byLabel = NORM_LABEL_TO_ID[nl];
   if (byLabel && KNOWN_COL_IDS.has(byLabel)) return byLabel;
+  // Direct label match against DEFAULT_COL_LABELS (normalized)
+  const direct = DEFAULT_COL_LABELS.find((d) => norm(d.label) === nl);
+  if (direct) return direct.id;
   return id; // unknown – keep as-is
 }
 
