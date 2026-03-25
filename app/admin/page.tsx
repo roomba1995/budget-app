@@ -6,55 +6,7 @@ import { useHotels, MergeAlert } from "@/hooks/useHotels";
 import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/types";
 import HotelFormModal from "@/components/HotelFormModal";
 import AdminHotelImportModal from "@/components/AdminHotelImportModal";
-import { COL_CONFIG_KEY, ColConfig, LABEL_TO_ID } from "@/components/GroupAllocationView";
-
-// All column definitions — IDs must exactly match COL_DEFS in GroupAllocationView.tsx
-const DEFAULT_COL_LABELS: { id: string; label: string; group: string }[] = [
-  { id: "area",              label: "エリア",               group: "基本情報" },
-  { id: "municipality",     label: "市町村郡",              group: "基本情報" },
-  { id: "facilityNo",       label: "施設番号",              group: "基本情報" },
-  { id: "location",         label: "所在地",               group: "基本情報" },
-  { id: "totalRooms",       label: "保有客室数",            group: "客室数" },
-  { id: "totalCapacity",    label: "収容人数(保有)",        group: "客室数" },
-  { id: "offeredRooms",     label: "提供客室数",            group: "客室数" },
-  { id: "offeredCapacity",  label: "収容人数(提供)",        group: "客室数" },
-  { id: "utilizedRooms",    label: "利用想定客室数",        group: "客室数" },
-  { id: "avgOccupancy",     label: "平均宿泊人数",          group: "客室数" },
-  { id: "totalFunctionRooms",   label: "ファンクション保有室数", group: "ファンクション" },
-  { id: "offeredFunctionRooms", label: "ファンクション提供室数", group: "ファンクション" },
-  { id: "functionRoomEstimate", label: "ファンクション利用想定", group: "ファンクション" },
-  { id: "hasGym",       label: "ジム",              group: "設備" },
-  { id: "hasSauna",     label: "サウナ",            group: "設備" },
-  { id: "hasLaundry",   label: "コインランドリー",   group: "設備" },
-  { id: "boardingArea", label: "乗降場",             group: "設備" },
-  { id: "exclusiveUse", label: "貸切想定",           group: "設備" },
-  { id: "tenantCount",  label: "テナント数",         group: "設備" },
-  { id: "mealDifficulty",    label: "食事提供難易度",  group: "食事" },
-  { id: "mealProvider",      label: "食事提供主体",   group: "食事" },
-  { id: "breakfastSeats",    label: "朝食会場座席数", group: "食事" },
-  { id: "breakfastUnitPrice", label: "朝食単価",     group: "食事" },
-  { id: "halalSupport",      label: "ハラル支援",    group: "食事" },
-  { id: "assignedSport",        label: "配宿競技",   group: "配宿情報" },
-  { id: "assignedVenue",        label: "会場",       group: "配宿情報" },
-  { id: "assignedPersonCount",  label: "人数",       group: "配宿情報" },
-  { id: "facilityPersonCount",  label: "施設別人数", group: "配宿情報" },
-  { id: "estimateStatus",      label: "見積取得状況",        group: "料金" },
-  { id: "normalRoomUnitPrice", label: "見積単価（通常）",    group: "料金" },
-  { id: "halalRoomUnitPrice",  label: "見積単価（ハラル）",  group: "料金" },
-  { id: "pricePerRoom",        label: "1室単価（税込）",     group: "料金" },
-  { id: "minRoomPrice",        label: "単価幅最低（税抜）",  group: "料金" },
-  { id: "maxRoomPrice",        label: "単価幅最高（税抜）",  group: "料金" },
-  { id: "priceFluctuation",    label: "変動有無",            group: "料金" },
-  { id: "bathTax",             label: "入湯税/宿泊税",       group: "料金" },
-  { id: "cancellationPolicy",  label: "キャンセルポリシー",  group: "料金" },
-  { id: "ci",              label: "CI",                      group: "日程・集計" },
-  { id: "co",              label: "CO",                      group: "日程・集計" },
-  { id: "nights",          label: "確保泊数",                group: "日程・集計" },
-  { id: "dailyRoomBudget", label: "1日あたり客室費（予算）", group: "日程・集計" },
-  { id: "roomBudgetTotal", label: "客室総計（予算）",        group: "日程・集計" },
-  { id: "roomActualTotal", label: "客室総計（実績）",        group: "日程・集計" },
-  { id: "funcBudgetTotal", label: "ファンクション総計（予算）", group: "日程・集計" },
-];
+import { COL_CONFIG_KEY, ColConfig, LABEL_TO_ID, COL_DEF_IDS } from "@/components/GroupAllocationView";
 
 /** RFC 4180 compliant CSV line parser — handles quoted fields with commas/newlines */
 function parseCSVLine(line: string): string[] {
@@ -75,8 +27,6 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-const KNOWN_COL_IDS = new Set(DEFAULT_COL_LABELS.map((d) => d.id));
-
 /** Normalize a label for robust matching (mirrors GroupAllocationView.normLabel) */
 const norm = (l: string) => l
   .replace(/[\r\n]/g, "")
@@ -91,16 +41,13 @@ for (const [k, v] of Object.entries(LABEL_TO_ID)) {
 }
 
 /** Resolve a config entry's id to the canonical COL_DEF id.
- *  Priority: 1) exact ID, 2) LABEL_TO_ID (normalized), 3) direct DEFAULT_COL_LABELS label match */
+ *  Priority: 1) exact COL_DEF ID, 2) LABEL_TO_ID lookup (normalized) */
 function resolveColId(id: string, label: string): string {
-  if (KNOWN_COL_IDS.has(id)) return id;
+  if (COL_DEF_IDS.has(id)) return id;
   const nl = norm(label);
   const byLabel = NORM_LABEL_TO_ID[nl];
-  if (byLabel && KNOWN_COL_IDS.has(byLabel)) return byLabel;
-  // Direct label match against DEFAULT_COL_LABELS (normalized)
-  const direct = DEFAULT_COL_LABELS.find((d) => norm(d.label) === nl);
-  if (direct) return direct.id;
-  return id; // unknown – keep as-is
+  if (byLabel && COL_DEF_IDS.has(byLabel)) return byLabel;
+  return id; // unknown – keep as-is (custom label)
 }
 
 function loadColConfig(): ColConfig[] {
@@ -108,22 +55,22 @@ function loadColConfig(): ColConfig[] {
     const s = localStorage.getItem(COL_CONFIG_KEY);
     if (s) {
       const raw: ColConfig[] = JSON.parse(s);
-      // Normalize IDs on read so export/preview always uses canonical ids
       return raw.map((c) => ({ ...c, id: resolveColId(c.id, c.label) }));
     }
   } catch { /* ignore */ }
-  return DEFAULT_COL_LABELS.map((c, i) => ({ id: c.id, label: c.label, order: i }));
+  return []; // nothing stored yet
 }
 
 function exportColConfigCsv() {
-  const cfg = loadColConfig(); // IDs are already normalized
-  const byId = new Map(cfg.map((c) => [c.id, c]));
-  const rows = DEFAULT_COL_LABELS.map((def, i) => {
-    const ov = byId.get(def.id);
-    return [def.id, ov?.label ?? def.label, String(ov?.order ?? i), ov?.group ?? def.group];
-  }).sort((a, b) => Number(a[2]) - Number(b[2]));
+  const cfg = loadColConfig();
+  if (!cfg.length) {
+    alert("列設定がインポートされていません。先にCSVをインポートしてください。");
+    return;
+  }
+  const sorted = [...cfg].sort((a, b) => a.order - b.order);
   const header = ["id", "label", "order", "group"];
-  const csv = [header, ...rows].map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = [header, ...sorted.map((c) => [c.id, c.label, String(c.order), c.group ?? ""])]
+    .map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -311,9 +258,8 @@ export default function AdminPage() {
           </div>
           {/* 現在保存されている列設定プレビュー */}
           {colPreview.length > 0 && (() => {
-            const knownIds = new Set(DEFAULT_COL_LABELS.map((d) => d.id));
-            const knownLabels = new Set(DEFAULT_COL_LABELS.map((d) => norm(d.label)));
-            const badRows = colPreview.filter((c) => !knownIds.has(c.id) && !knownLabels.has(norm(c.label)));
+            // Flag entries whose ID can't be matched to any renderable COL_DEF
+            const badRows = colPreview.filter((c) => !COL_DEF_IDS.has(c.id));
             return (
               <div className="px-5 pb-4 mt-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -336,7 +282,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {[...colPreview].sort((a, b) => a.order - b.order).map((c) => {
-                        const isUnknown = !knownIds.has(c.id) && !knownLabels.has(norm(c.label));
+                        const isUnknown = !COL_DEF_IDS.has(c.id);
                         return (
                           <tr key={c.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isUnknown ? "bg-amber-50" : ""}`}>
                             <td className="px-3 py-1.5 text-gray-400 tabular-nums">{c.order}</td>

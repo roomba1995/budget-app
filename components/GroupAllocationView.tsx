@@ -147,6 +147,8 @@ function nightsBetween(start: string, end: string): number {
 
 const STORAGE_KEY = "groupAllocation-hiddenCols-v1";
 export const COL_CONFIG_KEY = "groupAllocation-col-defs-v1";
+/** All valid COL_DEF ids — used by admin page to detect resolvable imports */
+export const COL_DEF_IDS = new Set(COL_DEFS.map((d) => d.id));
 
 export interface ColConfig {
   id: string;
