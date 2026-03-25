@@ -9,6 +9,64 @@ function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 }
 
+export interface MergeAlert {
+  facilityNo: string;
+  existingName: string;
+  newName: string;
+}
+
+export interface MergeResult {
+  result: Hotel[];
+  alerts: MergeAlert[];
+  addedCount: number;
+  updatedCount: number;
+}
+
+export function mergeHotels(existing: Hotel[], incoming: Hotel[]): MergeResult {
+  const alerts: MergeAlert[] = [];
+  const result = [...existing];
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for (const newHotel of incoming) {
+    if (!newHotel.facilityNo) {
+      result.push({ ...newHotel, id: genId() });
+      addedCount++;
+      continue;
+    }
+
+    const existingIdx = result.findIndex(
+      (h) => h.facilityNo === newHotel.facilityNo
+    );
+
+    if (existingIdx === -1) {
+      result.push({ ...newHotel, id: genId() });
+      addedCount++;
+    } else {
+      const existingHotel = result[existingIdx];
+      if (existingHotel.name === newHotel.name) {
+        // 同一施設名 → グループ情報のみ更新、既存データ（費用等）は保持
+        result[existingIdx] = {
+          ...existingHotel,
+          groups: newHotel.groups,
+        };
+        updatedCount++;
+      } else {
+        // 施設名不一致 → 両方取り込み＋アラート
+        alerts.push({
+          facilityNo: newHotel.facilityNo,
+          existingName: existingHotel.name,
+          newName: newHotel.name,
+        });
+        result.push({ ...newHotel, id: genId() });
+        addedCount++;
+      }
+    }
+  }
+
+  return { result, alerts, addedCount, updatedCount };
+}
+
 export function useHotels() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -108,6 +166,24 @@ export function useHotels() {
     );
   }, []);
 
+  const mergeImportHotels = useCallback(
+    (incoming: Hotel[]): MergeResult => {
+      const mergeResult = mergeHotels(
+        hotels.map((h) => ({ ...h })),
+        incoming
+      );
+      setHotels(
+        mergeResult.result.map((hotel) => ({
+          ...hotel,
+          id: hotel.id || genId(),
+          costItems: hotel.costItems || [],
+        }))
+      );
+      return mergeResult;
+    },
+    [hotels]
+  );
+
   return {
     hotels,
     initialized,
@@ -118,5 +194,6 @@ export function useHotels() {
     updateCostItem,
     deleteCostItem,
     importHotels,
+    mergeImportHotels,
   };
 }

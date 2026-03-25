@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useHotels } from "@/hooks/useHotels";
 import { Hotel, CostItem, Group, GROUPS, GROUP_COLORS } from "@/types";
 import SummarySection from "@/components/SummarySection";
@@ -135,6 +136,13 @@ export default function Page() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <Link
+              href="/admin"
+              className="text-sm text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+            >
+              <span>⚙</span>
+              <span>管理画面</span>
+            </Link>
             <button
               onClick={() => setImportModalOpen(true)}
               className="text-sm text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
