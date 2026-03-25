@@ -10,12 +10,16 @@ import {
   calcVariance,
   formatCurrency,
 } from "@/types";
+import GroupAllocationView from "@/components/GroupAllocationView";
 
 interface Props {
   hotels: Hotel[];
 }
 
+type SubView = "summary" | "allocation";
+
 export default function BudgetSummaryView({ hotels }: Props) {
+  const [subView, setSubView] = useState<SubView>("summary");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
@@ -70,6 +74,36 @@ export default function BudgetSummaryView({ hotels }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* サブナビゲーション */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setSubView("summary")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            subView === "summary"
+              ? "bg-white text-gray-800 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          費目サマリー
+        </button>
+        <button
+          onClick={() => setSubView("allocation")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            subView === "allocation"
+              ? "bg-white text-gray-800 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          グループ別配宿積算
+        </button>
+      </div>
+
+      {subView === "allocation" && (
+        <GroupAllocationView hotels={hotels} />
+      )}
+
+      {subView === "summary" && (
+      <>
       {/* 大会別サマリーカード */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <EventCard
@@ -276,6 +310,8 @@ export default function BudgetSummaryView({ hotels }: Props) {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
