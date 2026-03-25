@@ -511,14 +511,7 @@ export default function GroupAllocationView({ hotels }: Props) {
           </h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400">{groupHotels.length}件</span>
-            {/* 列設定再適用ボタン */}
-            <button
-              onClick={() => { setActiveDefs(applyColConfig(COL_DEFS)); setHiddenCols(new Set()); localStorage.removeItem(STORAGE_KEY); }}
-              title="管理画面でインポートした列設定を再読み込みします"
-              className="text-xs px-2 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors"
-            >
-              🔄 設定再適用
-            </button>
+
             {/* 列設定ボタン */}
             <div className="relative" ref={panelRef}>
               <button
