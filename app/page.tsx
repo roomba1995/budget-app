@@ -183,6 +183,30 @@ export default function Page() {
             </TabButton>
           </div>
         </div>
+
+        {/* Search bar (hotels tab only) — sticky, always visible */}
+        {activeTab === "hotels" && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 border-t border-gray-100 bg-white">
+            <div className="relative max-w-sm">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">🔍</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ホテル名・所在地・施設番号で検索..."
+                className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
@@ -190,28 +214,6 @@ export default function Page() {
           <>
             {/* Summary */}
             <SummarySection hotels={hotels} />
-
-            {/* Search + Group Filter */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">🔍</span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ホテル名・所在地・施設番号で検索..."
-                  className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Group Filter */}
             <div className="flex flex-wrap items-center gap-2">
