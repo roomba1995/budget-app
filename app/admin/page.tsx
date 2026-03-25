@@ -117,7 +117,9 @@ export default function AdminPage() {
           return { id, label, order, ...(group ? { group } : {}) };
         }).filter((c) => c.label);
         localStorage.setItem(COL_CONFIG_KEY, JSON.stringify(cfgs));
-        setColImportMsg(`✓ ${cfgs.length}列の設定を保存しました。グループ別配宿積算ページを再読み込みすると反映されます。`);
+        // Notify same-tab listeners (storage event only fires in other tabs)
+        window.dispatchEvent(new StorageEvent("storage", { key: COL_CONFIG_KEY }));
+        setColImportMsg(`✓ ${cfgs.length}列の設定を保存しました。`);
       } catch {
         setColImportMsg("⚠ CSVの読み込みに失敗しました。フォーマットを確認してください。");
       }

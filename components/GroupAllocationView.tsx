@@ -228,7 +228,23 @@ export default function GroupAllocationView({ hotels }: Props) {
     });
   };
 
-  const activeDefs = useMemo(() => applyColConfig(COL_DEFS), []);
+  const [activeDefs, setActiveDefs] = useState(() => applyColConfig(COL_DEFS));
+
+  // Re-read col config whenever admin imports new settings
+  useEffect(() => {
+    const refresh = () => setActiveDefs(applyColConfig(COL_DEFS));
+    // cross-tab: storage event fires in THIS tab when ANOTHER tab writes localStorage
+    const onStorage = (e: StorageEvent) => { if (e.key === COL_CONFIG_KEY) refresh(); };
+    // same-tab: visibilitychange fires when user switches back from admin tab
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
   const visibleCols = activeDefs.filter((c) => !hiddenCols.has(c.id));
 
   const groupHotels = useMemo(
