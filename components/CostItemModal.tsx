@@ -18,13 +18,14 @@ import {
 
 interface Props {
   item: CostItem | null;
+  defaultCategory?: CostCategory;
   onSubmit: (data: Omit<CostItem, "id">) => void;
   onClose: () => void;
 }
 
-export default function CostItemModal({ item, onSubmit, onClose }: Props) {
+export default function CostItemModal({ item, defaultCategory, onSubmit, onClose }: Props) {
   const [category, setCategory] = useState<CostCategory>(
-    item?.category ?? "客室確保費"
+    item?.category ?? defaultCategory ?? "客室確保費"
   );
   const [event, setEvent] = useState<GameEvent>(item?.event ?? "asia");
   const [description, setDescription] = useState(item?.description ?? "");
