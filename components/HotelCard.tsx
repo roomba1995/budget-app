@@ -55,7 +55,7 @@ export default function HotelCard({
                 </span>
               )}
               <Link
-                href={`/hotels/${hotel.id}`}
+                href={`/hotels/detail?id=${hotel.id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
               >
@@ -99,7 +99,7 @@ export default function HotelCard({
             </div>
             <div className="flex items-center gap-0.5">
               <Link
-                href={`/hotels/${hotel.id}`}
+                href={`/hotels/detail?id=${hotel.id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="px-2.5 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full border border-blue-200 transition-colors whitespace-nowrap"
                 title="詳細ページ"

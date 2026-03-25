@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useState, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useHotels } from "@/hooks/useHotels";
 import {
@@ -359,8 +359,16 @@ function SingleCategoryView({
 // ─────────────────────────────────────────────
 
 export default function HotelDetailClient() {
-  const params = useParams();
-  const id = typeof params?.id === "string" ? params.id : "";
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="text-gray-400 text-lg">読み込み中...</div></div>}>
+      <HotelDetailInner />
+    </Suspense>
+  );
+}
+
+function HotelDetailInner() {
+  const searchParams = useSearchParams();
+  const id = searchParams?.get("id") ?? "";
   const { hotels, initialized, addCostItem, updateCostItem, deleteCostItem } =
     useHotels();
 
