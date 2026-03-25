@@ -6,7 +6,7 @@ import { useHotels, MergeAlert } from "@/hooks/useHotels";
 import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/types";
 import HotelFormModal from "@/components/HotelFormModal";
 import AdminHotelImportModal from "@/components/AdminHotelImportModal";
-import { COL_CONFIG_KEY, ColConfig } from "@/components/GroupAllocationView";
+import { COL_CONFIG_KEY, ColConfig, LABEL_TO_ID } from "@/components/GroupAllocationView";
 
 // All column definitions — IDs must exactly match COL_DEFS in GroupAllocationView.tsx
 const DEFAULT_COL_LABELS: { id: string; label: string; group: string }[] = [
@@ -75,16 +75,32 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
+const KNOWN_COL_IDS = new Set(DEFAULT_COL_LABELS.map((d) => d.id));
+const norm = (l: string) => l.replace(/\n/g, "").trim();
+
+/** Resolve a config entry's id to the canonical COL_DEF id.
+ *  Uses LABEL_TO_ID so old/corrupted IDs (e.g. custom_配宿競技) are correctly resolved. */
+function resolveColId(id: string, label: string): string {
+  if (KNOWN_COL_IDS.has(id)) return id;
+  const byLabel = LABEL_TO_ID[norm(label)];
+  if (byLabel && KNOWN_COL_IDS.has(byLabel)) return byLabel;
+  return id; // unknown – keep as-is
+}
+
 function loadColConfig(): ColConfig[] {
   try {
     const s = localStorage.getItem(COL_CONFIG_KEY);
-    if (s) return JSON.parse(s);
+    if (s) {
+      const raw: ColConfig[] = JSON.parse(s);
+      // Normalize IDs on read so export/preview always uses canonical ids
+      return raw.map((c) => ({ ...c, id: resolveColId(c.id, c.label) }));
+    }
   } catch { /* ignore */ }
   return DEFAULT_COL_LABELS.map((c, i) => ({ id: c.id, label: c.label, order: i }));
 }
 
 function exportColConfigCsv() {
-  const cfg = loadColConfig();
+  const cfg = loadColConfig(); // IDs are already normalized
   const byId = new Map(cfg.map((c) => [c.id, c]));
   const rows = DEFAULT_COL_LABELS.map((def, i) => {
     const ov = byId.get(def.id);
@@ -134,7 +150,8 @@ export default function AdminPage() {
           const cols = parseCSVLine(line);
           const rawId = cols[0]?.trim();
           const label = cols[1]?.trim() ?? "";
-          const id = rawId || `custom_${label.replace(/\s+/g, "_") || idx}`;
+          // Always resolve to canonical COL_DEF id so export/apply work correctly
+          const id = resolveColId(rawId || "", label) || `custom_${label.replace(/\s+/g, "_") || idx}`;
           const order = cols[2] !== undefined && cols[2].trim() !== "" ? Number(cols[2]) : idx;
           const group = cols[3]?.trim() || undefined;
           return { id, label, order, ...(group ? { group } : {}) };

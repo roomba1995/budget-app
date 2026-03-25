@@ -167,7 +167,7 @@ function loadHidden(): Set<string> {
 /** Map all known label variations (current + historical) → COL_DEF id.
  *  Required because DEFAULT_COL_LABELS has changed over time, and users may
  *  have CSV files downloaded with older label names. */
-const LABEL_TO_ID: Record<string, string> = {
+export const LABEL_TO_ID: Record<string, string> = {
   // 基本情報
   "エリア": "area",
   "市町村郡": "municipality",
