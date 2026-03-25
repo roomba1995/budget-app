@@ -25,6 +25,7 @@ export default function Page() {
     addCostItem,
     updateCostItem,
     deleteCostItem,
+    importHotels,
   } = useHotels();
 
   const handleUpdateHotel = (id: string, updates: Partial<Omit<Hotel, "id" | "costItems">>) => {
@@ -292,7 +293,9 @@ export default function Page() {
           />
         )}
 
-        {activeTab === "version" && <BudgetVersionView hotels={hotels} />}
+        {activeTab === "version" && (
+          <BudgetVersionView hotels={hotels} onRestoreSnapshot={importHotels} />
+        )}
 
         {activeTab === "meal" && <MealCategoryView hotels={hotels} />}
       </main>

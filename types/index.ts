@@ -147,6 +147,21 @@ export interface Hotel {
   roomTypes: RoomType[];
   costItems: CostItem[];
   notes: string;
+  /** 保有客室数 */
+  totalRooms?: number;
+  /** 提供客室数 */
+  offeredRooms?: number;
+  /** ファンクションルーム 保有室数 */
+  totalFunctionRooms?: number;
+  /** ファンクションルーム 提供室数 */
+  offeredFunctionRooms?: number;
+}
+
+export interface HotelSnapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  hotels: Hotel[];
 }
 
 export interface BudgetVersionEntry {

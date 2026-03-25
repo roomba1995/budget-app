@@ -25,6 +25,10 @@ export default function HotelFormModal({ hotel, onSubmit, onClose }: Props) {
       ? hotel.roomTypes
       : [{ id: genId(), typeName: "", contractQuantity: 0 }]
   );
+  const [totalRooms, setTotalRooms] = useState<number | "">(hotel?.totalRooms ?? "");
+  const [offeredRooms, setOfferedRooms] = useState<number | "">(hotel?.offeredRooms ?? "");
+  const [totalFunctionRooms, setTotalFunctionRooms] = useState<number | "">(hotel?.totalFunctionRooms ?? "");
+  const [offeredFunctionRooms, setOfferedFunctionRooms] = useState<number | "">(hotel?.offeredFunctionRooms ?? "");
   const [notes, setNotes] = useState(hotel?.notes ?? "");
 
   const toggleGroup = (g: Group) => {
@@ -66,6 +70,10 @@ export default function HotelFormModal({ hotel, onSubmit, onClose }: Props) {
       contractEndDate: endDate,
       roomTypes: roomTypes.filter((r) => r.typeName.trim()),
       notes: notes.trim(),
+      totalRooms: totalRooms !== "" ? Number(totalRooms) : undefined,
+      offeredRooms: offeredRooms !== "" ? Number(offeredRooms) : undefined,
+      totalFunctionRooms: totalFunctionRooms !== "" ? Number(totalFunctionRooms) : undefined,
+      offeredFunctionRooms: offeredFunctionRooms !== "" ? Number(offeredFunctionRooms) : undefined,
     });
   };
 
@@ -176,6 +184,80 @@ export default function HotelFormModal({ hotel, onSubmit, onClose }: Props) {
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+          </div>
+
+          {/* Room counts */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              客室数
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">保有客室数</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={totalRooms}
+                    onChange={(e) => setTotalRooms(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400 flex-shrink-0">室</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">提供客室数</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={offeredRooms}
+                    onChange={(e) => setOfferedRooms(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400 flex-shrink-0">室</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Function room counts */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              ファンクションルーム数
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">保有室数</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={totalFunctionRooms}
+                    onChange={(e) => setTotalFunctionRooms(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400 flex-shrink-0">室</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">提供室数</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={offeredFunctionRooms}
+                    onChange={(e) => setOfferedFunctionRooms(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400 flex-shrink-0">室</span>
+                </div>
+              </div>
             </div>
           </div>
 

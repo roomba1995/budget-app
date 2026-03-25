@@ -594,6 +594,22 @@ function HotelDetailInner() {
                   )}
                 </span>
               </div>
+              {/* 客室数サマリ */}
+              {(hotel.totalRooms != null || hotel.offeredRooms != null ||
+                hotel.totalFunctionRooms != null || hotel.offeredFunctionRooms != null) && (
+                <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                  {(hotel.totalRooms != null || hotel.offeredRooms != null) && (
+                    <span className="bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
+                      🛏 客室: 保有 {hotel.totalRooms ?? "—"}室 / 提供 {hotel.offeredRooms ?? "—"}室
+                    </span>
+                  )}
+                  {(hotel.totalFunctionRooms != null || hotel.offeredFunctionRooms != null) && (
+                    <span className="bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
+                      🏛 ファンクション: 保有 {hotel.totalFunctionRooms ?? "—"}室 / 提供 {hotel.offeredFunctionRooms ?? "—"}室
+                    </span>
+                  )}
+                </div>
+              )}
               {hotel.roomTypes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {hotel.roomTypes.map((r) => (

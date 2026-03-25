@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Hotel,
+  HotelSnapshot,
   BudgetVersion,
   BudgetVersionEntry,
   COST_CATEGORIES,
@@ -11,22 +12,33 @@ import {
 } from "@/types";
 
 const VERSION_STORAGE_KEY = "budget-versions-v1";
+const SNAPSHOT_STORAGE_KEY = "hotel-snapshots-v1";
 
 interface Props {
   hotels: Hotel[];
+  onRestoreSnapshot: (hotels: Hotel[]) => void;
 }
 
-export default function BudgetVersionView({ hotels }: Props) {
+export default function BudgetVersionView({ hotels, onRestoreSnapshot }: Props) {
   const [versions, setVersions] = useState<BudgetVersion[]>([]);
   const [compareA, setCompareA] = useState<string>("current");
   const [compareB, setCompareB] = useState<string>("");
   const [newVersionName, setNewVersionName] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [snapshots, setSnapshots] = useState<HotelSnapshot[]>([]);
+  const [newSnapshotName, setNewSnapshotName] = useState("");
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(VERSION_STORAGE_KEY);
       if (stored) setVersions(JSON.parse(stored));
+    } catch {
+      /* ignore */
+    }
+    try {
+      const stored = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+      if (stored) setSnapshots(JSON.parse(stored));
     } catch {
       /* ignore */
     }
@@ -61,6 +73,34 @@ export default function BudgetVersionView({ hotels }: Props) {
     setNewVersionName("");
     setCompareB(newVersion.id);
     setSaving(false);
+  };
+
+  const saveSnapshots = (s: HotelSnapshot[]) => {
+    setSnapshots(s);
+    localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(s));
+  };
+
+  const handleSaveSnapshot = () => {
+    const name = newSnapshotName.trim();
+    if (!name) return;
+    const snap: HotelSnapshot = {
+      id: `snap-${Date.now()}`,
+      name,
+      createdAt: new Date().toISOString(),
+      hotels: JSON.parse(JSON.stringify(hotels)),
+    };
+    saveSnapshots([...snapshots, snap]);
+    setNewSnapshotName("");
+  };
+
+  const handleRestoreSnapshot = (snap: HotelSnapshot) => {
+    if (!confirm(`「${snap.name}」に復元します。現在のデータは上書きされます。よろしいですか？`)) return;
+    onRestoreSnapshot(snap.hotels);
+  };
+
+  const handleDeleteSnapshot = (id: string) => {
+    if (!confirm("このバックアップを削除しますか？")) return;
+    saveSnapshots(snapshots.filter((s) => s.id !== id));
   };
 
   const handleDeleteVersion = (id: string) => {
@@ -138,6 +178,74 @@ export default function BudgetVersionView({ hotels }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* データバックアップ */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">
+          データバックアップ
+        </h2>
+        <p className="text-xs text-gray-400 mb-3">
+          全ホテルデータ（客室・費用・契約情報を含む）のスナップショットを保存し、後から復元できます。
+        </p>
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={newSnapshotName}
+            onChange={(e) => setNewSnapshotName(e.target.value)}
+            placeholder="例: 3月25日版、査定前バックアップ"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            onKeyDown={(e) => e.key === "Enter" && handleSaveSnapshot()}
+          />
+          <button
+            onClick={handleSaveSnapshot}
+            disabled={!newSnapshotName.trim()}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 transition-colors whitespace-nowrap"
+          >
+            バックアップ保存
+          </button>
+        </div>
+        {snapshots.length > 0 ? (
+          <div className="space-y-2">
+            {snapshots.map((snap) => (
+              <div
+                key={snap.id}
+                className="flex items-center justify-between py-2 px-3 rounded-lg bg-emerald-50 border border-emerald-100"
+              >
+                <div>
+                  <span className="font-medium text-sm text-gray-800">{snap.name}</span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    {new Date(snap.createdAt).toLocaleDateString("ja-JP", {
+                      year: "numeric", month: "short", day: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    ({snap.hotels.length}件)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleRestoreSnapshot(snap)}
+                    className="text-xs text-emerald-600 hover:text-emerald-800 px-2 py-1 rounded hover:bg-emerald-100 transition-colors font-medium"
+                  >
+                    復元
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSnapshot(snap.id)}
+                    className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 text-center py-2">
+            まだバックアップがありません
+          </p>
+        )}
+      </div>
+
       {/* バージョン保存 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">
