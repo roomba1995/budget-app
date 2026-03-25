@@ -49,7 +49,7 @@ export default function HotelCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               {hotel.facilityNo && (
-                <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                <span className="font-mono font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
                   {hotel.facilityNo}
                 </span>
               )}
