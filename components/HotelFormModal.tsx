@@ -14,6 +14,7 @@ function genId() {
 }
 
 export default function HotelFormModal({ hotel, onSubmit, onClose }: Props) {
+  const [facilityNo, setFacilityNo] = useState(hotel?.facilityNo ?? "");
   const [name, setName] = useState(hotel?.name ?? "");
   const [location, setLocation] = useState(hotel?.location ?? "");
   const [groups, setGroups] = useState<Group[]>(hotel?.groups ?? []);
@@ -57,6 +58,7 @@ export default function HotelFormModal({ hotel, onSubmit, onClose }: Props) {
     e.preventDefault();
     if (!name.trim()) return;
     onSubmit({
+      facilityNo: facilityNo.trim() || undefined,
       name: name.trim(),
       location: location.trim(),
       groups,
@@ -88,18 +90,31 @@ export default function HotelFormModal({ hotel, onSubmit, onClose }: Props) {
           onSubmit={handleSubmit}
           className="overflow-y-auto flex-1 px-5 py-4 space-y-4"
         >
-          {/* Hotel name */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              ホテル名 <span className="text-red-500">*</span>
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="例：グランドホテル東京"
-            />
+          {/* Facility No + Name */}
+          <div className="flex gap-3">
+            <div className="w-28 flex-shrink-0">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                施設番号
+              </label>
+              <input
+                value={facilityNo}
+                onChange={(e) => setFacilityNo(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                placeholder="例：0001"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                施設名 <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="例：グランドホテル東京"
+              />
+            </div>
           </div>
 
           {/* Location */}

@@ -48,6 +48,11 @@ export default function HotelCard({
           {/* Left: name + meta */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
+              {hotel.facilityNo && (
+                <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                  {hotel.facilityNo}
+                </span>
+              )}
               <h3 className="font-semibold text-gray-900">{hotel.name}</h3>
               {hotel.groups.map((g) => (
                 <span
