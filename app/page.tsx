@@ -13,7 +13,6 @@ import ExecutionDashboard from "@/components/ExecutionDashboard";
 import ContractStatusView from "@/components/ContractStatusView";
 import BudgetVersionView from "@/components/BudgetVersionView";
 import MealCategoryView from "@/components/MealCategoryView";
-import ExcelImportModal from "@/components/ExcelImportModal";
 
 type Tab = "hotels" | "budget" | "execution" | "contract" | "version" | "meal";
 
@@ -21,13 +20,11 @@ export default function Page() {
   const {
     hotels,
     initialized,
-    addHotel,
     updateHotel,
     deleteHotel,
     addCostItem,
     updateCostItem,
     deleteCostItem,
-    importHotels,
   } = useHotels();
 
   const handleUpdateHotel = (id: string, updates: Partial<Omit<Hotel, "id" | "costItems">>) => {
@@ -38,7 +35,6 @@ export default function Page() {
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
   const [expandedHotelId, setExpandedHotelId] = useState<string | null>(null);
 
-  const [importModalOpen, setImportModalOpen] = useState(false);
   const [hotelModalOpen, setHotelModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
 
@@ -50,11 +46,6 @@ export default function Page() {
     filterGroups.length === 0
       ? hotels
       : hotels.filter((h) => h.groups.some((g) => filterGroups.includes(g)));
-
-  const handleAddHotel = () => {
-    setEditingHotel(null);
-    setHotelModalOpen(true);
-  };
 
   const handleEditHotel = (hotel: Hotel) => {
     setEditingHotel(hotel);
@@ -71,9 +62,6 @@ export default function Page() {
   const handleHotelFormSubmit = (data: Omit<Hotel, "id" | "costItems">) => {
     if (editingHotel) {
       updateHotel(editingHotel.id, data);
-    } else {
-      const newId = addHotel(data);
-      setExpandedHotelId(newId);
     }
     setHotelModalOpen(false);
   };
@@ -143,22 +131,6 @@ export default function Page() {
               <span>⚙</span>
               <span>管理画面</span>
             </Link>
-            <button
-              onClick={() => setImportModalOpen(true)}
-              className="text-sm text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-            >
-              <span>📥</span>
-              <span>Excelインポート</span>
-            </button>
-            {activeTab === "hotels" && (
-              <button
-                onClick={handleAddHotel}
-                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5"
-              >
-                <span className="text-base leading-none">＋</span>
-                <span>ホテル追加</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -248,14 +220,8 @@ export default function Page() {
                 <div className="text-5xl mb-4">🏨</div>
                 <p className="text-base">ホテルが登録されていません</p>
                 <p className="text-sm mt-2">
-                  右上の「Excelインポート」からExcelファイルを読み込むか、
+                  <Link href="/admin" className="text-blue-600 hover:underline">管理画面</Link>からExcelアップロードまたは手動追加してください
                 </p>
-                <button
-                  onClick={handleAddHotel}
-                  className="mt-2 text-blue-600 hover:underline text-base"
-                >
-                  手動でホテルを追加する
-                </button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -298,16 +264,6 @@ export default function Page() {
 
         {activeTab === "meal" && <MealCategoryView hotels={hotels} />}
       </main>
-
-      {importModalOpen && (
-        <ExcelImportModal
-          onImport={(newHotels) => {
-            importHotels(newHotels);
-            setExpandedHotelId(null);
-          }}
-          onClose={() => setImportModalOpen(false)}
-        />
-      )}
 
       {hotelModalOpen && (
         <HotelFormModal
