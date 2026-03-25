@@ -157,6 +157,8 @@ export default function AdminPage() {
           return { id, label, order, ...(group ? { group } : {}) };
         }).filter((c) => c.label);
         localStorage.setItem(COL_CONFIG_KEY, JSON.stringify(cfgs));
+        // Clear hidden-cols so all imported columns are visible when budget page loads
+        localStorage.removeItem("groupAllocation-hiddenCols-v1");
         window.dispatchEvent(new StorageEvent("storage", { key: COL_CONFIG_KEY }));
         setColPreview(cfgs);
         setColImportMsg(`✓ ${cfgs.length}列の設定を保存しました。`);

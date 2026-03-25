@@ -279,12 +279,14 @@ export const LABEL_TO_ID: Record<string, string> = {
 };
 
 /** Apply label/order overrides from admin config.
+ *  Only returns columns present in the config; columns absent from config are excluded.
  *  Matching priority: 1) exact ID, 2) normalized label vs LABEL_TO_ID map (covers all historical labels) */
 function applyColConfig(defs: ColDef[]): ColDef[] {
   try {
     const s = localStorage.getItem(COL_CONFIG_KEY);
     if (!s) return defs;
     const cfg: ColConfig[] = JSON.parse(s);
+    if (!cfg.length) return defs;
 
     const norm = (l: string) => l.replace(/\n/g, "").trim();
 
@@ -303,17 +305,16 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
       }
     }
 
-    return [...defs]
+    if (resolved.size === 0) return defs;
+
+    // Return ONLY the columns present in the config, in config order
+    return defs
+      .filter((d) => resolved.has(d.id))
       .map((d) => {
-        const ov = resolved.get(d.id);
-        if (!ov) return d;
+        const ov = resolved.get(d.id)!;
         return { ...d, label: ov.label, ...(ov.group ? { group: ov.group } : {}) };
       })
-      .sort((a, b) => {
-        const oa = resolved.get(a.id)?.order ?? 9999;
-        const ob = resolved.get(b.id)?.order ?? 9999;
-        return oa - ob;
-      });
+      .sort((a, b) => (resolved.get(a.id)!.order ?? 9999) - (resolved.get(b.id)!.order ?? 9999));
   } catch {
     return defs;
   }
@@ -364,11 +365,18 @@ export default function GroupAllocationView({ hotels }: Props) {
 
   // Re-read col config whenever admin imports new settings
   useEffect(() => {
-    const refresh = () => setActiveDefs(applyColConfig(COL_DEFS));
+    const refresh = (resetHidden: boolean) => {
+      setActiveDefs(applyColConfig(COL_DEFS));
+      if (resetHidden) {
+        // New config defines the column set — clear manual hide state so all imported cols are visible
+        setHiddenCols(new Set());
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    };
     // cross-tab: storage event fires in THIS tab when ANOTHER tab writes localStorage
-    const onStorage = (e: StorageEvent) => { if (e.key === COL_CONFIG_KEY) refresh(); };
+    const onStorage = (e: StorageEvent) => { if (e.key === COL_CONFIG_KEY) refresh(true); };
     // same-tab: visibilitychange fires when user switches back from admin tab
-    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(false); };
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
