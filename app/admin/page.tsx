@@ -312,9 +312,8 @@ export default function AdminPage() {
           {/* 現在保存されている列設定プレビュー */}
           {colPreview.length > 0 && (() => {
             const knownIds = new Set(DEFAULT_COL_LABELS.map((d) => d.id));
-            const normLabel = (l: string) => l.replace(/\n/g, "").trim();
-            const knownLabels = new Set(DEFAULT_COL_LABELS.map((d) => normLabel(d.label)));
-            const badRows = colPreview.filter((c) => !knownIds.has(c.id) && !knownLabels.has(normLabel(c.label)));
+            const knownLabels = new Set(DEFAULT_COL_LABELS.map((d) => norm(d.label)));
+            const badRows = colPreview.filter((c) => !knownIds.has(c.id) && !knownLabels.has(norm(c.label)));
             return (
               <div className="px-5 pb-4 mt-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -337,7 +336,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {[...colPreview].sort((a, b) => a.order - b.order).map((c) => {
-                        const isUnknown = !knownIds.has(c.id) && !knownLabels.has(normLabel(c.label));
+                        const isUnknown = !knownIds.has(c.id) && !knownLabels.has(norm(c.label));
                         return (
                           <tr key={c.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isUnknown ? "bg-amber-50" : ""}`}>
                             <td className="px-3 py-1.5 text-gray-400 tabular-nums">{c.order}</td>

@@ -158,7 +158,10 @@ export interface ColConfig {
 function loadHidden(): Set<string> {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
-    return s ? new Set(JSON.parse(s)) : new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
+    if (s) return new Set(JSON.parse(s));
+    // If a col config is stored, show ALL configured columns (config defines the visible set)
+    if (localStorage.getItem(COL_CONFIG_KEY)) return new Set();
+    return new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
   } catch {
     return new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
   }
@@ -507,7 +510,7 @@ export default function GroupAllocationView({ hotels }: Props) {
             <span className="text-xs text-gray-400">{groupHotels.length}件</span>
             {/* 列設定再適用ボタン */}
             <button
-              onClick={() => setActiveDefs(applyColConfig(COL_DEFS))}
+              onClick={() => { setActiveDefs(applyColConfig(COL_DEFS)); setHiddenCols(new Set()); localStorage.removeItem(STORAGE_KEY); }}
               title="管理画面でインポートした列設定を再読み込みします"
               className="text-xs px-2 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors"
             >
