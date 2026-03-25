@@ -1,11 +1,85 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useHotels, MergeAlert } from "@/hooks/useHotels";
 import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/types";
 import HotelFormModal from "@/components/HotelFormModal";
 import AdminHotelImportModal from "@/components/AdminHotelImportModal";
+import { COL_CONFIG_KEY, ColConfig } from "@/components/GroupAllocationView";
+
+// All column definitions (id + default label) duplicated here for export
+const DEFAULT_COL_LABELS: { id: string; label: string; group: string }[] = [
+  { id: "area",              label: "エリア",               group: "基本情報" },
+  { id: "municipality",     label: "市町村郡",              group: "基本情報" },
+  { id: "facilityNo",       label: "施設番号",              group: "基本情報" },
+  { id: "location",         label: "所在地",               group: "基本情報" },
+  { id: "totalRooms",       label: "保有客室数",            group: "客室数" },
+  { id: "totalCapacity",    label: "収容人数(保有)",        group: "客室数" },
+  { id: "offeredRooms",     label: "提供客室数",            group: "客室数" },
+  { id: "offeredCapacity",  label: "収容人数(提供)",        group: "客室数" },
+  { id: "utilizedRooms",    label: "利用想定客室数",        group: "客室数" },
+  { id: "avgOccupancy",     label: "平均宿泊人数",          group: "客室数" },
+  { id: "totalFunctionRooms",   label: "ファンクション保有室数", group: "ファンクション" },
+  { id: "offeredFunctionRooms", label: "ファンクション提供室数", group: "ファンクション" },
+  { id: "functionRoomEstimate", label: "ファンクション見積額",   group: "ファンクション" },
+  { id: "hasGym",       label: "ジム",              group: "設備" },
+  { id: "hasSauna",     label: "サウナ",            group: "設備" },
+  { id: "hasLaundry",   label: "コインランドリー",   group: "設備" },
+  { id: "halalSupport", label: "ハラール対応",       group: "設備" },
+  { id: "mealDifficulty", label: "食事難易度",       group: "食事" },
+  { id: "mealProvider",   label: "食事提供者",       group: "食事" },
+  { id: "breakfastSeats", label: "朝食席数",         group: "食事" },
+  { id: "breakfastUnitPrice", label: "朝食単価",     group: "食事" },
+  { id: "boardingArea",   label: "乗降エリア",       group: "配宿情報" },
+  { id: "exclusiveUse",   label: "専有利用",         group: "配宿情報" },
+  { id: "assignedSport",  label: "配宿競技",         group: "配宿情報" },
+  { id: "assignedVenue",  label: "配宿会場",         group: "配宿情報" },
+  { id: "assignedPersonCount",  label: "配宿人数",   group: "配宿情報" },
+  { id: "facilityPersonCount",  label: "施設内人数", group: "配宿情報" },
+  { id: "pricePerRoom",       label: "室料単価",     group: "料金" },
+  { id: "minRoomPrice",       label: "最低客室単価", group: "料金" },
+  { id: "maxRoomPrice",       label: "最高客室単価", group: "料金" },
+  { id: "normalRoomUnitPrice", label: "通常客室単価", group: "料金" },
+  { id: "halalRoomUnitPrice",  label: "ハラール客室単価", group: "料金" },
+  { id: "priceFluctuation",   label: "料金変動",     group: "料金" },
+  { id: "estimateStatus",     label: "見積状況",     group: "料金" },
+  { id: "bathTax",            label: "入湯税",       group: "料金" },
+  { id: "tenantCount",        label: "テナント数",   group: "その他" },
+  { id: "cancellationPolicy", label: "キャンセルポリシー", group: "その他" },
+  { id: "nights",             label: "宿泊夜数",     group: "日程・集計" },
+  { id: "checkin",            label: "チェックイン", group: "日程・集計" },
+  { id: "checkout",           label: "チェックアウト", group: "日程・集計" },
+  { id: "roomBudgetTotal",    label: "客室確保費(予算)", group: "日程・集計" },
+  { id: "roomActualTotal",    label: "客室確保費(実績)", group: "日程・集計" },
+  { id: "funcBudgetTotal",    label: "会議室等確保費(予算)", group: "日程・集計" },
+];
+
+function loadColConfig(): ColConfig[] {
+  try {
+    const s = localStorage.getItem(COL_CONFIG_KEY);
+    if (s) return JSON.parse(s);
+  } catch { /* ignore */ }
+  return DEFAULT_COL_LABELS.map((c, i) => ({ id: c.id, label: c.label, order: i }));
+}
+
+function exportColConfigCsv() {
+  const cfg = loadColConfig();
+  const byId = new Map(cfg.map((c) => [c.id, c]));
+  const rows = DEFAULT_COL_LABELS.map((def, i) => {
+    const ov = byId.get(def.id);
+    return [def.id, ov?.label ?? def.label, String(ov?.order ?? i), def.group];
+  }).sort((a, b) => Number(a[2]) - Number(b[2]));
+  const header = ["id", "label", "order", "group(参考・変更不可)"];
+  const csv = [header, ...rows].map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "column-config.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminPage() {
   const {
@@ -21,6 +95,31 @@ export default function AdminPage() {
   const [hotelModalOpen, setHotelModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [colImportMsg, setColImportMsg] = useState<string | null>(null);
+  const colFileRef = useRef<HTMLInputElement>(null);
+
+  const handleColImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = (ev.target?.result as string).replace(/^\uFEFF/, "");
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        // skip header line
+        const cfgs: ColConfig[] = lines.slice(1).map((line) => {
+          const cols = line.split(",").map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"'));
+          return { id: cols[0], label: cols[1], order: Number(cols[2]) };
+        }).filter((c) => c.id);
+        localStorage.setItem(COL_CONFIG_KEY, JSON.stringify(cfgs));
+        setColImportMsg(`✓ ${cfgs.length}列の設定を保存しました。グループ別配宿積算ページを再読み込みすると反映されます。`);
+      } catch {
+        setColImportMsg("⚠ CSVの読み込みに失敗しました。フォーマットを確認してください。");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+    e.target.value = "";
+  };
 
   const filteredHotels = searchQuery
     ? hotels.filter(
@@ -104,7 +203,49 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* 列定義管理セクション */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-base font-semibold text-gray-800">グループ別配宿積算 — 列定義管理</h2>
+            <p className="text-xs text-gray-500 mt-0.5">列の表示名・並び順をCSVでエクスポートし、Excelで編集後にインポートできます</p>
+          </div>
+          <div className="px-5 py-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={exportColConfigCsv}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              ↓ CSV ダウンロード
+            </button>
+            <button
+              onClick={() => colFileRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              ↑ CSV インポート
+            </button>
+            <input ref={colFileRef} type="file" accept=".csv" className="hidden" onChange={handleColImport} />
+            <button
+              onClick={() => { localStorage.removeItem(COL_CONFIG_KEY); setColImportMsg("✓ デフォルト設定にリセットしました。"); }}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              リセット
+            </button>
+            {colImportMsg && (
+              <span className={`text-xs ${colImportMsg.startsWith("⚠") ? "text-red-500" : "text-green-600"}`}>
+                {colImportMsg}
+              </span>
+            )}
+          </div>
+          <div className="px-5 pb-4">
+            <p className="text-xs text-gray-400">
+              CSVの列: <code className="bg-gray-100 px-1 rounded">id</code>（変更不可）、
+              <code className="bg-gray-100 px-1 rounded">label</code>（表示名を変更可）、
+              <code className="bg-gray-100 px-1 rounded">order</code>（並び順、小さいほど左）、
+              <code className="bg-gray-100 px-1 rounded">group</code>（参考のみ）
+            </p>
+          </div>
+        </div>
+
         {/* 施設管理セクション */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4">

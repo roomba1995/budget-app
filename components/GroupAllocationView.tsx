@@ -146,6 +146,13 @@ function nightsBetween(start: string, end: string): number {
 }
 
 const STORAGE_KEY = "groupAllocation-hiddenCols-v1";
+export const COL_CONFIG_KEY = "groupAllocation-col-defs-v1";
+
+export interface ColConfig {
+  id: string;
+  label: string;
+  order: number;
+}
 
 function loadHidden(): Set<string> {
   try {
@@ -156,12 +163,46 @@ function loadHidden(): Set<string> {
   }
 }
 
+/** Apply label/order overrides from admin config */
+function applyColConfig(defs: ColDef[]): ColDef[] {
+  try {
+    const s = localStorage.getItem(COL_CONFIG_KEY);
+    if (!s) return defs;
+    const cfg: ColConfig[] = JSON.parse(s);
+    const map = new Map(cfg.map((c) => [c.id, c]));
+    return [...defs]
+      .map((d) => {
+        const ov = map.get(d.id);
+        return ov ? { ...d, label: ov.label } : d;
+      })
+      .sort((a, b) => {
+        const oa = map.get(a.id)?.order ?? 9999;
+        const ob = map.get(b.id)?.order ?? 9999;
+        return oa - ob;
+      });
+  } catch {
+    return defs;
+  }
+}
+
 // ─────────────────────────────────────────────
 export default function GroupAllocationView({ hotels }: Props) {
   const [selectedGroup, setSelectedGroup] = useState<Group>(GROUPS[0]);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => loadHidden());
   const [colPanelOpen, setColPanelOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+
+  // Sync top ↔ table scroll
+  const syncFromTop = () => {
+    if (tableWrapRef.current && topScrollRef.current)
+      tableWrapRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+  };
+  const syncFromTable = () => {
+    if (topScrollRef.current && tableWrapRef.current)
+      topScrollRef.current.scrollLeft = tableWrapRef.current.scrollLeft;
+  };
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(hiddenCols)));
@@ -185,7 +226,8 @@ export default function GroupAllocationView({ hotels }: Props) {
     });
   };
 
-  const visibleCols = COL_DEFS.filter((c) => !hiddenCols.has(c.id));
+  const activeDefs = useMemo(() => applyColConfig(COL_DEFS), []);
+  const visibleCols = activeDefs.filter((c) => !hiddenCols.has(c.id));
 
   const groupHotels = useMemo(
     () => hotels.filter((h) => h.groups.includes(selectedGroup)),
@@ -218,12 +260,12 @@ export default function GroupAllocationView({ hotels }: Props) {
 
   const colGroups = useMemo(() => {
     const map = new Map<string, ColDef[]>();
-    for (const c of COL_DEFS) {
+    for (const c of activeDefs) {
       if (!map.has(c.group)) map.set(c.group, []);
       map.get(c.group)!.push(c);
     }
     return map;
-  }, []);
+  }, [activeDefs]);
 
   return (
     <div className="space-y-4">
@@ -281,7 +323,7 @@ export default function GroupAllocationView({ hotels }: Props) {
               >
                 ⚙ 列設定
                 <span className="ml-1 bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full">
-                  {visibleCols.length}/{COL_DEFS.length}
+                  {visibleCols.length}/{activeDefs.length}
                 </span>
               </button>
               {colPanelOpen && (
@@ -290,7 +332,7 @@ export default function GroupAllocationView({ hotels }: Props) {
                     <span className="text-sm font-semibold text-gray-700">表示列の設定</span>
                     <div className="flex gap-2">
                       <button onClick={() => setHiddenCols(new Set())} className="text-xs text-blue-600 hover:underline">全表示</button>
-                      <button onClick={() => setHiddenCols(new Set(COL_DEFS.map((c) => c.id)))} className="text-xs text-gray-400 hover:underline">全非表示</button>
+                      <button onClick={() => setHiddenCols(new Set(activeDefs.map((c) => c.id)))} className="text-xs text-gray-400 hover:underline">全非表示</button>
                     </div>
                   </div>
                   <div className="px-4 py-3 space-y-4">
@@ -324,7 +366,11 @@ export default function GroupAllocationView({ hotels }: Props) {
             「{selectedGroup}」のホテルは登録されていません
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div ref={topScrollRef} className="overflow-x-auto border-b border-gray-100" onScroll={syncFromTop}>
+            <div style={{ height: 1, minWidth: `${visibleCols.length * 90 + 200}px` }} />
+          </div>
+          <div ref={tableWrapRef} className="overflow-x-auto" onScroll={syncFromTable}>
             <table className="w-full text-sm" style={{ minWidth: `${visibleCols.length * 90 + 200}px` }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600">
@@ -378,6 +424,7 @@ export default function GroupAllocationView({ hotels }: Props) {
               </tfoot>
             </table>
           </div>
+          </>
         )}
       </div>
 
