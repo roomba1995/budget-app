@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo, Suspense, useRef, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHotels } from "@/hooks/useHotels";
 import {
@@ -369,8 +369,34 @@ export default function HotelDetailClient() {
 function HotelDetailInner() {
   const searchParams = useSearchParams();
   const id = searchParams?.get("id") ?? "";
+  const router = useRouter();
   const { hotels, initialized, addCostItem, updateCostItem, deleteCostItem } =
     useHotels();
+
+  const [hotelSearchQuery, setHotelSearchQuery] = useState("");
+  const [hotelDropdownOpen, setHotelDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setHotelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredHotelsForDropdown = useMemo(() => {
+    const q = hotelSearchQuery.trim().toLowerCase();
+    if (!q) return hotels;
+    return hotels.filter(
+      (h) =>
+        h.name.toLowerCase().includes(q) ||
+        (h.location ?? "").toLowerCase().includes(q) ||
+        (h.facilityNo ?? "").toLowerCase().includes(q)
+    );
+  }, [hotels, hotelSearchQuery]);
 
   const hotel = useMemo(
     () => hotels.find((h) => h.id === id),
@@ -470,23 +496,65 @@ function HotelDetailInner() {
             ← メイン画面
           </Link>
           <span className="text-gray-300 flex-shrink-0 select-none">/</span>
-          <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-            {hotel.facilityNo && (
-              <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded flex-shrink-0">
-                {hotel.facilityNo}
-              </span>
-            )}
-            <h1 className="font-bold text-gray-900 truncate text-base sm:text-lg">
-              {hotel.name}
-            </h1>
-            {hotel.contractStatus && (
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
-                  CONTRACT_STATUS_COLORS[hotel.contractStatus]
-                }`}
-              >
-                {hotel.contractStatus}
-              </span>
+          {/* Hotel switcher dropdown */}
+          <div className="flex items-center gap-2 flex-1 min-w-0 relative" ref={dropdownRef}>
+            <button
+              onClick={() => { setHotelDropdownOpen((v) => !v); setHotelSearchQuery(""); }}
+              className="flex items-center gap-2 min-w-0 hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors max-w-full"
+              title="ホテルを切り替え"
+            >
+              {hotel.facilityNo && (
+                <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded flex-shrink-0">
+                  {hotel.facilityNo}
+                </span>
+              )}
+              <h1 className="font-bold text-gray-900 truncate text-base sm:text-lg">
+                {hotel.name}
+              </h1>
+              {hotel.contractStatus && (
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${CONTRACT_STATUS_COLORS[hotel.contractStatus]}`}>
+                  {hotel.contractStatus}
+                </span>
+              )}
+              <span className="text-gray-400 text-xs flex-shrink-0">▼</span>
+            </button>
+
+            {hotelDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+                <div className="p-2 border-b border-gray-100">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={hotelSearchQuery}
+                    onChange={(e) => setHotelSearchQuery(e.target.value)}
+                    placeholder="ホテル名・施設番号で検索..."
+                    className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                <div className="overflow-y-auto max-h-64">
+                  {filteredHotelsForDropdown.length === 0 ? (
+                    <div className="px-3 py-4 text-sm text-gray-400 text-center">見つかりません</div>
+                  ) : (
+                    filteredHotelsForDropdown.map((h) => (
+                      <button
+                        key={h.id}
+                        onClick={() => {
+                          router.push(`/hotels/detail?id=${h.id}`);
+                          setHotelDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors flex items-center gap-2 ${h.id === id ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"}`}
+                      >
+                        {h.facilityNo && (
+                          <span className="font-mono text-xs text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded flex-shrink-0">
+                            {h.facilityNo}
+                          </span>
+                        )}
+                        <span className="truncate">{h.name}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <Link
