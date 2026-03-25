@@ -68,9 +68,9 @@ function exportColConfigCsv() {
   const byId = new Map(cfg.map((c) => [c.id, c]));
   const rows = DEFAULT_COL_LABELS.map((def, i) => {
     const ov = byId.get(def.id);
-    return [def.id, ov?.label ?? def.label, String(ov?.order ?? i), def.group];
+    return [def.id, ov?.label ?? def.label, String(ov?.order ?? i), ov?.group ?? def.group];
   }).sort((a, b) => Number(a[2]) - Number(b[2]));
-  const header = ["id", "label", "order", "group(参考・変更不可)"];
+  const header = ["id", "label", "order", "group"];
   const csv = [header, ...rows].map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -107,10 +107,15 @@ export default function AdminPage() {
         const text = (ev.target?.result as string).replace(/^\uFEFF/, "");
         const lines = text.split(/\r?\n/).filter(Boolean);
         // skip header line
-        const cfgs: ColConfig[] = lines.slice(1).map((line) => {
+        const cfgs: ColConfig[] = lines.slice(1).map((line, idx) => {
           const cols = line.split(",").map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"'));
-          return { id: cols[0], label: cols[1], order: Number(cols[2]) };
-        }).filter((c) => c.id);
+          const rawId = cols[0]?.trim();
+          const label = cols[1]?.trim() ?? "";
+          const id = rawId || `custom_${label.replace(/\s+/g, "_") || idx}`;
+          const order = cols[2] !== undefined && cols[2].trim() !== "" ? Number(cols[2]) : idx;
+          const group = cols[3]?.trim() || undefined;
+          return { id, label, order, ...(group ? { group } : {}) };
+        }).filter((c) => c.label);
         localStorage.setItem(COL_CONFIG_KEY, JSON.stringify(cfgs));
         setColImportMsg(`✓ ${cfgs.length}列の設定を保存しました。グループ別配宿積算ページを再読み込みすると反映されます。`);
       } catch {
@@ -238,10 +243,10 @@ export default function AdminPage() {
           </div>
           <div className="px-5 pb-4">
             <p className="text-xs text-gray-400">
-              CSVの列: <code className="bg-gray-100 px-1 rounded">id</code>（変更不可）、
-              <code className="bg-gray-100 px-1 rounded">label</code>（表示名を変更可）、
+              CSVの列: <code className="bg-gray-100 px-1 rounded">id</code>（空欄の場合は自動生成）、
+              <code className="bg-gray-100 px-1 rounded">label</code>（表示名・変更可）、
               <code className="bg-gray-100 px-1 rounded">order</code>（並び順、小さいほど左）、
-              <code className="bg-gray-100 px-1 rounded">group</code>（参考のみ）
+              <code className="bg-gray-100 px-1 rounded">group</code>（列設定パネルのグループ名・変更可）
             </p>
           </div>
         </div>

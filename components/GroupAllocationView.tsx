@@ -152,6 +152,7 @@ export interface ColConfig {
   id: string;
   label: string;
   order: number;
+  group?: string;
 }
 
 function loadHidden(): Set<string> {
@@ -173,7 +174,8 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
     return [...defs]
       .map((d) => {
         const ov = map.get(d.id);
-        return ov ? { ...d, label: ov.label } : d;
+        if (!ov) return d;
+        return { ...d, label: ov.label, ...(ov.group ? { group: ov.group } : {}) };
       })
       .sort((a, b) => {
         const oa = map.get(a.id)?.order ?? 9999;
