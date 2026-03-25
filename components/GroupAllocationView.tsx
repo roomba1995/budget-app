@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
 import { Hotel, Group, GROUPS, GROUP_COLORS, formatCurrency } from "@/types";
 
 interface Props {
@@ -598,7 +599,7 @@ export default function GroupAllocationView({ hotels }: Props) {
                   return (
                     <tr key={h.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4 sticky left-0 bg-white hover:bg-gray-50 z-10">
-                        <div className="font-medium text-gray-800 text-sm">{h.name}</div>
+                        <Link href={`/hotels/detail?id=${h.id}`} className="font-medium text-blue-600 hover:underline text-sm">{h.name}</Link>
                       </td>
                       {visibleCols.map((c) => (
                         <td key={c.id} className={`py-3 px-3 tabular-nums text-xs text-gray-700 whitespace-nowrap text-${c.align ?? "right"}`}>
