@@ -19,6 +19,7 @@ import {
   formatDateRange,
 } from "@/types";
 import CostItemModal from "@/components/CostItemModal";
+import HotelFormModal from "@/components/HotelFormModal";
 
 // ─────────────────────────────────────────────
 // Sub-components
@@ -370,8 +371,9 @@ function HotelDetailInner() {
   const searchParams = useSearchParams();
   const id = searchParams?.get("id") ?? "";
   const router = useRouter();
-  const { hotels, initialized, addCostItem, updateCostItem, deleteCostItem } =
+  const { hotels, initialized, addCostItem, updateCostItem, deleteCostItem, updateHotel } =
     useHotels();
+  const [hotelEditOpen, setHotelEditOpen] = useState(false);
 
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
   const [hotelDropdownOpen, setHotelDropdownOpen] = useState(false);
@@ -570,6 +572,14 @@ function HotelDetailInner() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         {/* ── Hotel info card ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => setHotelEditOpen(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors flex items-center gap-1"
+            >
+              ✏️ ホテル情報を編集
+            </button>
+          </div>
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="flex-1 space-y-2.5">
               {hotel.groups.length > 0 && (
@@ -594,22 +604,15 @@ function HotelDetailInner() {
                   )}
                 </span>
               </div>
-              {/* 客室数サマリ */}
-              {(hotel.totalRooms != null || hotel.offeredRooms != null ||
-                hotel.totalFunctionRooms != null || hotel.offeredFunctionRooms != null) && (
-                <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                  {(hotel.totalRooms != null || hotel.offeredRooms != null) && (
-                    <span className="bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
-                      🛏 客室: 保有 {hotel.totalRooms ?? "—"}室 / 提供 {hotel.offeredRooms ?? "—"}室
-                    </span>
-                  )}
-                  {(hotel.totalFunctionRooms != null || hotel.offeredFunctionRooms != null) && (
-                    <span className="bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
-                      🏛 ファンクション: 保有 {hotel.totalFunctionRooms ?? "—"}室 / 提供 {hotel.offeredFunctionRooms ?? "—"}室
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* 客室数サマリ — 常時表示 */}
+              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                <span className="bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
+                  🛏 客室: 保有 {hotel.totalRooms != null ? `${hotel.totalRooms}室` : "—"} / 提供 {hotel.offeredRooms != null ? `${hotel.offeredRooms}室` : "—"}
+                </span>
+                <span className="bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
+                  🏛 ファンクション: 保有 {hotel.totalFunctionRooms != null ? `${hotel.totalFunctionRooms}室` : "—"} / 提供 {hotel.offeredFunctionRooms != null ? `${hotel.offeredFunctionRooms}室` : "—"}
+                </span>
+              </div>
               {hotel.roomTypes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {hotel.roomTypes.map((r) => (
@@ -736,6 +739,17 @@ function HotelDetailInner() {
           defaultCategory={modalDefaultCategory}
           onSubmit={handleSubmit}
           onClose={() => setCostModalOpen(false)}
+        />
+      )}
+
+      {hotelEditOpen && hotel && (
+        <HotelFormModal
+          hotel={hotel}
+          onSubmit={(data) => {
+            updateHotel(hotel.id, data);
+            setHotelEditOpen(false);
+          }}
+          onClose={() => setHotelEditOpen(false)}
         />
       )}
     </div>
