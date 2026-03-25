@@ -8,7 +8,7 @@ import HotelFormModal from "@/components/HotelFormModal";
 import AdminHotelImportModal from "@/components/AdminHotelImportModal";
 import { COL_CONFIG_KEY, ColConfig } from "@/components/GroupAllocationView";
 
-// All column definitions (id + default label) duplicated here for export
+// All column definitions — IDs must exactly match COL_DEFS in GroupAllocationView.tsx
 const DEFAULT_COL_LABELS: { id: string; label: string; group: string }[] = [
   { id: "area",              label: "エリア",               group: "基本情報" },
   { id: "municipality",     label: "市町村郡",              group: "基本情報" },
@@ -22,38 +22,58 @@ const DEFAULT_COL_LABELS: { id: string; label: string; group: string }[] = [
   { id: "avgOccupancy",     label: "平均宿泊人数",          group: "客室数" },
   { id: "totalFunctionRooms",   label: "ファンクション保有室数", group: "ファンクション" },
   { id: "offeredFunctionRooms", label: "ファンクション提供室数", group: "ファンクション" },
-  { id: "functionRoomEstimate", label: "ファンクション見積額",   group: "ファンクション" },
+  { id: "functionRoomEstimate", label: "ファンクション利用想定", group: "ファンクション" },
   { id: "hasGym",       label: "ジム",              group: "設備" },
   { id: "hasSauna",     label: "サウナ",            group: "設備" },
   { id: "hasLaundry",   label: "コインランドリー",   group: "設備" },
-  { id: "halalSupport", label: "ハラール対応",       group: "設備" },
-  { id: "mealDifficulty", label: "食事難易度",       group: "食事" },
-  { id: "mealProvider",   label: "食事提供者",       group: "食事" },
-  { id: "breakfastSeats", label: "朝食席数",         group: "食事" },
+  { id: "boardingArea", label: "乗降場",             group: "設備" },
+  { id: "exclusiveUse", label: "貸切想定",           group: "設備" },
+  { id: "tenantCount",  label: "テナント数",         group: "設備" },
+  { id: "mealDifficulty",    label: "食事提供難易度",  group: "食事" },
+  { id: "mealProvider",      label: "食事提供主体",   group: "食事" },
+  { id: "breakfastSeats",    label: "朝食会場座席数", group: "食事" },
   { id: "breakfastUnitPrice", label: "朝食単価",     group: "食事" },
-  { id: "boardingArea",   label: "乗降エリア",       group: "配宿情報" },
-  { id: "exclusiveUse",   label: "専有利用",         group: "配宿情報" },
-  { id: "assignedSport",  label: "配宿競技",         group: "配宿情報" },
-  { id: "assignedVenue",  label: "配宿会場",         group: "配宿情報" },
-  { id: "assignedPersonCount",  label: "配宿人数",   group: "配宿情報" },
-  { id: "facilityPersonCount",  label: "施設内人数", group: "配宿情報" },
-  { id: "pricePerRoom",       label: "室料単価",     group: "料金" },
-  { id: "minRoomPrice",       label: "最低客室単価", group: "料金" },
-  { id: "maxRoomPrice",       label: "最高客室単価", group: "料金" },
-  { id: "normalRoomUnitPrice", label: "通常客室単価", group: "料金" },
-  { id: "halalRoomUnitPrice",  label: "ハラール客室単価", group: "料金" },
-  { id: "priceFluctuation",   label: "料金変動",     group: "料金" },
-  { id: "estimateStatus",     label: "見積状況",     group: "料金" },
-  { id: "bathTax",            label: "入湯税",       group: "料金" },
-  { id: "tenantCount",        label: "テナント数",   group: "その他" },
-  { id: "cancellationPolicy", label: "キャンセルポリシー", group: "その他" },
-  { id: "nights",             label: "宿泊夜数",     group: "日程・集計" },
-  { id: "checkin",            label: "チェックイン", group: "日程・集計" },
-  { id: "checkout",           label: "チェックアウト", group: "日程・集計" },
-  { id: "roomBudgetTotal",    label: "客室確保費(予算)", group: "日程・集計" },
-  { id: "roomActualTotal",    label: "客室確保費(実績)", group: "日程・集計" },
-  { id: "funcBudgetTotal",    label: "会議室等確保費(予算)", group: "日程・集計" },
+  { id: "halalSupport",      label: "ハラル支援",    group: "食事" },
+  { id: "assignedSport",        label: "配宿競技",   group: "配宿情報" },
+  { id: "assignedVenue",        label: "会場",       group: "配宿情報" },
+  { id: "assignedPersonCount",  label: "人数",       group: "配宿情報" },
+  { id: "facilityPersonCount",  label: "施設別人数", group: "配宿情報" },
+  { id: "estimateStatus",      label: "見積取得状況",        group: "料金" },
+  { id: "normalRoomUnitPrice", label: "見積単価（通常）",    group: "料金" },
+  { id: "halalRoomUnitPrice",  label: "見積単価（ハラル）",  group: "料金" },
+  { id: "pricePerRoom",        label: "1室単価（税込）",     group: "料金" },
+  { id: "minRoomPrice",        label: "単価幅最低（税抜）",  group: "料金" },
+  { id: "maxRoomPrice",        label: "単価幅最高（税抜）",  group: "料金" },
+  { id: "priceFluctuation",    label: "変動有無",            group: "料金" },
+  { id: "bathTax",             label: "入湯税/宿泊税",       group: "料金" },
+  { id: "cancellationPolicy",  label: "キャンセルポリシー",  group: "料金" },
+  { id: "ci",              label: "CI",                      group: "日程・集計" },
+  { id: "co",              label: "CO",                      group: "日程・集計" },
+  { id: "nights",          label: "確保泊数",                group: "日程・集計" },
+  { id: "dailyRoomBudget", label: "1日あたり客室費（予算）", group: "日程・集計" },
+  { id: "roomBudgetTotal", label: "客室総計（予算）",        group: "日程・集計" },
+  { id: "roomActualTotal", label: "客室総計（実績）",        group: "日程・集計" },
+  { id: "funcBudgetTotal", label: "ファンクション総計（予算）", group: "日程・集計" },
 ];
+
+/** RFC 4180 compliant CSV line parser — handles quoted fields with commas/newlines */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      result.push(cur); cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
 
 function loadColConfig(): ColConfig[] {
   try {
@@ -96,6 +116,9 @@ export default function AdminPage() {
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [colImportMsg, setColImportMsg] = useState<string | null>(null);
+  const [colPreview, setColPreview] = useState<ColConfig[]>(() => {
+    try { const s = localStorage.getItem(COL_CONFIG_KEY); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const colFileRef = useRef<HTMLInputElement>(null);
 
   const handleColImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,9 +129,9 @@ export default function AdminPage() {
       try {
         const text = (ev.target?.result as string).replace(/^\uFEFF/, "");
         const lines = text.split(/\r?\n/).filter(Boolean);
-        // skip header line
+        // skip header line; use RFC 4180 parser for quoted fields
         const cfgs: ColConfig[] = lines.slice(1).map((line, idx) => {
-          const cols = line.split(",").map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"'));
+          const cols = parseCSVLine(line);
           const rawId = cols[0]?.trim();
           const label = cols[1]?.trim() ?? "";
           const id = rawId || `custom_${label.replace(/\s+/g, "_") || idx}`;
@@ -117,8 +140,8 @@ export default function AdminPage() {
           return { id, label, order, ...(group ? { group } : {}) };
         }).filter((c) => c.label);
         localStorage.setItem(COL_CONFIG_KEY, JSON.stringify(cfgs));
-        // Notify same-tab listeners (storage event only fires in other tabs)
         window.dispatchEvent(new StorageEvent("storage", { key: COL_CONFIG_KEY }));
+        setColPreview(cfgs);
         setColImportMsg(`✓ ${cfgs.length}列の設定を保存しました。`);
       } catch {
         setColImportMsg("⚠ CSVの読み込みに失敗しました。フォーマットを確認してください。");
@@ -232,7 +255,7 @@ export default function AdminPage() {
             </button>
             <input ref={colFileRef} type="file" accept=".csv" className="hidden" onChange={handleColImport} />
             <button
-              onClick={() => { localStorage.removeItem(COL_CONFIG_KEY); setColImportMsg("✓ デフォルト設定にリセットしました。"); }}
+              onClick={() => { localStorage.removeItem(COL_CONFIG_KEY); setColPreview([]); window.dispatchEvent(new StorageEvent("storage", { key: COL_CONFIG_KEY })); setColImportMsg("✓ デフォルト設定にリセットしました。"); }}
               className="text-xs text-gray-400 hover:text-red-500 transition-colors"
             >
               リセット
@@ -243,7 +266,7 @@ export default function AdminPage() {
               </span>
             )}
           </div>
-          <div className="px-5 pb-4">
+          <div className="px-5 pb-1">
             <p className="text-xs text-gray-400">
               CSVの列: <code className="bg-gray-100 px-1 rounded">id</code>（空欄の場合は自動生成）、
               <code className="bg-gray-100 px-1 rounded">label</code>（表示名・変更可）、
@@ -251,6 +274,34 @@ export default function AdminPage() {
               <code className="bg-gray-100 px-1 rounded">group</code>（列設定パネルのグループ名・変更可）
             </p>
           </div>
+          {/* 現在保存されている列設定プレビュー */}
+          {colPreview.length > 0 && (
+            <div className="px-5 pb-4 mt-3">
+              <div className="text-xs font-medium text-gray-500 mb-2">現在保存されている列設定（{colPreview.length}列）</div>
+              <div className="overflow-x-auto max-h-48 overflow-y-auto border border-gray-100 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-gray-50">
+                    <tr className="border-b border-gray-100">
+                      <th className="px-3 py-2 text-left font-medium text-gray-500 w-8">順</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">id</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">label</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">group</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...colPreview].sort((a, b) => a.order - b.order).map((c) => (
+                      <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-3 py-1.5 text-gray-400 tabular-nums">{c.order}</td>
+                        <td className="px-3 py-1.5 font-mono text-gray-500">{c.id}</td>
+                        <td className="px-3 py-1.5 text-gray-800">{c.label}</td>
+                        <td className="px-3 py-1.5 text-gray-500">{c.group ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 施設管理セクション */}
