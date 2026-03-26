@@ -32,13 +32,18 @@ interface RoomRow {
   offeredRooms: number | null;
   checkin: string | null;
   mainStart: string | null;
+  prepareDays: number | null;
   mainEnd: string | null;
+  mainDays: number | null;
   checkout: string | null;
+  removeDays: number | null;
   preparePrice: number | null;
   mainPrice: number | null;
   dailyAmount: number | null;
   removePrice: number | null;
   roomNights: number | null;
+  sonota: number | null;
+  lodgingFee: number | null;
 }
 
 interface RoomChargeSection {
@@ -85,49 +90,62 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
     <div className="mb-4">
       <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs min-w-[600px] border border-gray-100 rounded-lg overflow-hidden">
+        <table className="w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
           <thead>
             <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
-              <th className="text-left py-2 px-3 font-medium">No.</th>
-              <th className="text-left py-2 px-3 font-medium">客室タイプ</th>
-              <th className="text-right py-2 px-3 font-medium">総客室数</th>
-              <th className="text-right py-2 px-3 font-medium">提供客室</th>
-              <th className="text-right py-2 px-3 font-medium">CI日</th>
-              <th className="text-right py-2 px-3 font-medium">本番開始日</th>
-              <th className="text-right py-2 px-3 font-medium">本番終了日</th>
-              <th className="text-right py-2 px-3 font-medium">CO日</th>
-              <th className="text-right py-2 px-3 font-medium">準備単価/室</th>
-              <th className="text-right py-2 px-3 font-medium">本番単価/室</th>
-              <th className="text-right py-2 px-3 font-medium">1日あたり (M×K)</th>
-              <th className="text-right py-2 px-3 font-medium">ルームナイツ</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">No.</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">チェックイン日</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">本番期間開始日</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">準備泊数</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">本番期間終了日</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">本番泊数</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">チェックアウト日</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">撤去泊数</th>
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">客室タイプ</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">総客室数</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">提供客室数</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">準備期間客室単価/室</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">本番期間客室単価/室</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">撤去期間客室単価/室</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">ルームナイツ</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">その他</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">宿泊料金</th>
             </tr>
           </thead>
           <tbody>
             {(section.rooms ?? []).map((r) => (
               <tr key={r.no} className="border-b border-gray-50 hover:bg-blue-50/20">
-                <td className="py-2 px-3 text-gray-400">{r.no}</td>
-                <td className="py-2 px-3 text-gray-700 font-medium">{r.roomType}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.totalRooms)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.offeredRooms)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.checkin)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.mainStart)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.mainEnd)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.checkout)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.preparePrice != null ? r.preparePrice.toLocaleString("ja-JP") : "—"}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.mainPrice != null ? r.mainPrice.toLocaleString("ja-JP") : "—"}</td>
-                <td className="py-2 px-3 text-right tabular-nums font-semibold text-gray-800">{fmtInt(r.dailyAmount)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.roomNights)}</td>
+                <td className="py-2 px-2 text-center text-gray-400">{r.no}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-500">{fmtDate(r.checkin)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-500">{fmtDate(r.mainStart)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-600">{fmtInt(r.prepareDays)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-500">{fmtDate(r.mainEnd)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-600">{fmtInt(r.mainDays)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-500">{fmtDate(r.checkout)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-600">{fmtInt(r.removeDays)}</td>
+                <td className="py-2 px-2 text-gray-700 font-medium">{r.roomType}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.totalRooms)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.offeredRooms)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.preparePrice != null ? r.preparePrice.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.mainPrice != null ? r.mainPrice.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.removePrice != null ? r.removePrice.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.roomNights)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.sonota != null ? r.sonota.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums font-semibold text-gray-800">{r.lodgingFee != null ? r.lodgingFee.toLocaleString("ja-JP") : "—"}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold text-sm">
-              <td colSpan={2} className="py-2 px-3 text-gray-600">合計</td>
-              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{fmtInt(section.totalRooms)}</td>
-              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{fmtInt(section.offeredRooms)}</td>
-              <td className="py-2 px-3" />
-              <td className="py-2 px-3 text-right tabular-nums text-blue-700">{fmtNum(section.dailyCost)}</td>
-              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{fmtInt(section.roomNights)}</td>
+              <td colSpan={9} className="py-2 px-2 text-gray-600">合計</td>
+              <td className="py-2 px-2 text-right tabular-nums text-gray-700">{fmtInt(section.totalRooms)}</td>
+              <td className="py-2 px-2 text-right tabular-nums text-gray-700">{fmtInt(section.offeredRooms)}</td>
+              <td className="py-2 px-2" />
+              <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.dailyCost)}</td>
+              <td className="py-2 px-2" />
+              <td className="py-2 px-2 text-right tabular-nums text-gray-700">{fmtInt(section.roomNights)}</td>
+              <td className="py-2 px-2" />
+              <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.totalCostTax ?? section.totalCost)}</td>
             </tr>
           </tfoot>
         </table>

@@ -20,6 +20,8 @@ export interface RoomRow {
   dailyAmount: number;
   removePrice: number | null;
   roomNights: number;
+  sonota: number | null;
+  lodgingFee: number | null;
 }
 
 export interface RoomChargeSection {
@@ -115,13 +117,16 @@ function parseSection(
     // Column indices (0-based):
     // A=0:No, B=1:CI, C=2:本番開始, D=3:準備泊, E=4:本番終了, F=5:本番泊,
     // G=6:CO, H=7:撤去泊, I=8:客室タイプ, J=9:総客室, K=10:提供客室,
-    // L=11:準備単価/label, M=12:本番単価/daily, O=14:撤去単価, P=15:ルームナイツ
+    // L=11:準備単価, M=12:本番単価, N=13:(skip), O=14:撤去単価, P=15:ルームナイツ
+    // Q=16:その他, R=17:宿泊料金
     const colA = row[0];
     const colJ = row[9];
     const colK = row[10];
     const colL = row[11];
     const colM = row[12];
     const colP = row[15];
+    const colQ = row[16];
+    const colR = row[17];
 
     const strA = cellStr(colA);
     const strI = cellStr(row[8]);
@@ -139,6 +144,19 @@ function parseSection(
     ) {
       const mainPrice = toNum(colM);
       const offered = toNum(colK) ?? 0;
+      const prepareDays = toNum(row[3]);
+      const mainDays = toNum(row[5]);
+      const removeDays = toNum(row[7]);
+      const preparePrice = toNum(row[11]);
+      const removePrice = toNum(row[14]);
+      const sonota = toNum(colQ);
+      // lodgingFee: use Excel value if available, otherwise calculate
+      const lodgingFeeRaw = toNum(colR);
+      const lodgingFeeCalc =
+        (preparePrice != null && prepareDays != null ? preparePrice * prepareDays * offered : 0) +
+        (mainPrice != null && mainDays != null ? mainPrice * mainDays * offered : 0) +
+        (removePrice != null && removeDays != null ? removePrice * removeDays * offered : 0);
+      const lodgingFee = lodgingFeeRaw ?? (lodgingFeeCalc > 0 ? lodgingFeeCalc : null);
       rooms.push({
         no: colA,
         roomType: strI,
@@ -146,16 +164,18 @@ function parseSection(
         offeredRooms: offered,
         checkin: formatDate(row[1]),
         mainStart: formatDate(row[2]),
-        prepareDays: toNum(row[3]),
+        prepareDays,
         mainEnd: formatDate(row[4]),
-        mainDays: toNum(row[5]),
+        mainDays,
         checkout: formatDate(row[6]),
-        removeDays: toNum(row[7]),
-        preparePrice: toNum(row[11]),
+        removeDays,
+        preparePrice,
         mainPrice,
         dailyAmount: mainPrice != null && offered > 0 ? mainPrice * offered : 0,
-        removePrice: toNum(row[14]),
+        removePrice,
         roomNights: toNum(colP) ?? 0,
+        sonota,
+        lodgingFee,
       });
       continue;
     }
