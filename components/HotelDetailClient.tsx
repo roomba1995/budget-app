@@ -76,7 +76,7 @@ function fmtDate(v: string | null | undefined): string {
   return v;
 }
 
-const ROOM_CHARGES_STORAGE_KEY = "room-charges-uploaded";
+const ROOM_CHARGES_STORAGE_KEY = "room-charges-v2-uploaded";
 type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
 
 // ─────────────────────────────────────────────
@@ -88,7 +88,8 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
   return (
     <div className="mb-4">
       <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" style={{ transform: "rotateX(180deg)" }}>
+        <div style={{ transform: "rotateX(180deg)" }}>
         <table className="w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
           <thead>
             <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
@@ -145,6 +146,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
             </tr>
           </tfoot>
         </table>
+        </div>
       </div>
       <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-center">

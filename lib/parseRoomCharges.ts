@@ -42,7 +42,7 @@ export interface RoomChargeEntry {
 
 export type RoomChargesDB = Record<string, RoomChargeEntry>;
 
-export const ROOM_CHARGES_STORAGE_KEY = "room-charges-uploaded";
+export const ROOM_CHARGES_STORAGE_KEY = "room-charges-v2-uploaded";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
