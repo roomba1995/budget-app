@@ -84,12 +84,35 @@ type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection
 // ─────────────────────────────────────────────
 
 function RoomChargeSectionTable({ label, section }: { label: string; section: RoomChargeSection }) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const top = topRef.current;
+    const bottom = bottomRef.current;
+    if (!top || !bottom) return;
+    // Set spacer width to match table scroll width
+    if (spacerRef.current) spacerRef.current.style.width = bottom.scrollWidth + "px";
+    const onTop = () => { bottom.scrollLeft = top.scrollLeft; };
+    const onBottom = () => {
+      top.scrollLeft = bottom.scrollLeft;
+      if (spacerRef.current) spacerRef.current.style.width = bottom.scrollWidth + "px";
+    };
+    top.addEventListener("scroll", onTop);
+    bottom.addEventListener("scroll", onBottom);
+    return () => { top.removeEventListener("scroll", onTop); bottom.removeEventListener("scroll", onBottom); };
+  }, [section]);
+
   if (!hasMeaningfulData(section)) return null;
   return (
     <div className="mb-4">
       <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
-      <div className="overflow-x-auto" style={{ transform: "rotateX(180deg)" }}>
-        <div style={{ transform: "rotateX(180deg)" }}>
+      {/* Top scrollbar mirror */}
+      <div ref={topRef} className="overflow-x-scroll" style={{ height: 16, overflowY: "hidden" }}>
+        <div ref={spacerRef} style={{ height: 1 }} />
+      </div>
+      <div ref={bottomRef} className="overflow-x-auto">
         <table className="w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
           <thead>
             <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
@@ -146,7 +169,6 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
             </tr>
           </tfoot>
         </table>
-        </div>
       </div>
       <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-center">
