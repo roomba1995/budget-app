@@ -30,6 +30,10 @@ interface RoomRow {
   roomType: string;
   totalRooms: number | null;
   offeredRooms: number | null;
+  checkin: string | null;
+  mainStart: string | null;
+  mainEnd: string | null;
+  checkout: string | null;
   preparePrice: number | null;
   mainPrice: number | null;
   dailyAmount: number | null;
@@ -60,6 +64,14 @@ function fmtInt(v: number | null | undefined): string {
   return v == null ? "—" : v.toLocaleString("ja-JP");
 }
 
+function fmtDate(v: string | null | undefined): string {
+  if (!v) return "—";
+  // "YYYY-MM-DD" → "M/D"
+  const parts = v.split("-");
+  if (parts.length === 3) return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+  return v;
+}
+
 const ROOM_CHARGES_STORAGE_KEY = "room-charges-uploaded";
 type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
 
@@ -80,7 +92,12 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
               <th className="text-left py-2 px-3 font-medium">客室タイプ</th>
               <th className="text-right py-2 px-3 font-medium">総客室数</th>
               <th className="text-right py-2 px-3 font-medium">提供客室</th>
-              <th className="text-right py-2 px-3 font-medium">本番単価</th>
+              <th className="text-right py-2 px-3 font-medium">CI日</th>
+              <th className="text-right py-2 px-3 font-medium">本番開始日</th>
+              <th className="text-right py-2 px-3 font-medium">本番終了日</th>
+              <th className="text-right py-2 px-3 font-medium">CO日</th>
+              <th className="text-right py-2 px-3 font-medium">準備単価/室</th>
+              <th className="text-right py-2 px-3 font-medium">本番単価/室</th>
               <th className="text-right py-2 px-3 font-medium">1日あたり (M×K)</th>
               <th className="text-right py-2 px-3 font-medium">ルームナイツ</th>
             </tr>
@@ -92,6 +109,11 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
                 <td className="py-2 px-3 text-gray-700 font-medium">{r.roomType}</td>
                 <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.totalRooms)}</td>
                 <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.offeredRooms)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.checkin)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.mainStart)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.mainEnd)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-500">{fmtDate(r.checkout)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.preparePrice != null ? r.preparePrice.toLocaleString("ja-JP") : "—"}</td>
                 <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.mainPrice != null ? r.mainPrice.toLocaleString("ja-JP") : "—"}</td>
                 <td className="py-2 px-3 text-right tabular-nums font-semibold text-gray-800">{fmtInt(r.dailyAmount)}</td>
                 <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.roomNights)}</td>
