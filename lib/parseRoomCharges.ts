@@ -20,7 +20,6 @@ export interface RoomRow {
   dailyAmount: number;
   removePrice: number | null;
   roomNights: number;
-  sonota: number | null;
   lodgingFee: number | null;
 }
 
@@ -115,10 +114,10 @@ function parseSection(
     const row = rows[i] ?? [];
 
     // Column indices (0-based):
-    // A=0:No, B=1:CI, C=2:本番開始, D=3:準備泊, E=4:本番終了, F=5:本番泊,
-    // G=6:CO, H=7:撤去泊, I=8:客室タイプ, J=9:総客室, K=10:提供客室,
-    // L=11:準備単価, M=12:本番単価, N=13:(skip), O=14:撤去単価, P=15:ルームナイツ
-    // Q=16:その他, R=17:宿泊料金
+    // A=0:No, B=1:チェックイン日, C=2:本番期間開始日, D=3:準備泊数, E=4:本番期間終了日, F=5:本番泊数,
+    // G=6:チェックアウト日, H=7:撤去泊数, I=8:客室タイプ, J=9:総客室数, K=10:提供客室,
+    // L=11:準備期間客室単価/室, M=12:本番期間客室単価/室, N=13:内部データ(skip),
+    // O=14:撤去期間客室単価/室, P=15:ルームナイツ, Q=16:宿泊料金
     const colA = row[0];
     const colJ = row[9];
     const colK = row[10];
@@ -126,7 +125,6 @@ function parseSection(
     const colM = row[12];
     const colP = row[15];
     const colQ = row[16];
-    const colR = row[17];
 
     const strA = cellStr(colA);
     const strI = cellStr(row[8]);
@@ -149,9 +147,8 @@ function parseSection(
       const removeDays = toNum(row[7]);
       const preparePrice = toNum(row[11]);
       const removePrice = toNum(row[14]);
-      const sonota = toNum(colQ);
-      // lodgingFee: use Excel value if available, otherwise calculate
-      const lodgingFeeRaw = toNum(colR);
+      // Q列(16)=宿泊料金: Excel実値を優先、なければ計算で補完
+      const lodgingFeeRaw = toNum(colQ);
       const lodgingFeeCalc =
         (preparePrice != null && prepareDays != null ? preparePrice * prepareDays * offered : 0) +
         (mainPrice != null && mainDays != null ? mainPrice * mainDays * offered : 0) +
@@ -174,7 +171,6 @@ function parseSection(
         dailyAmount: mainPrice != null && offered > 0 ? mainPrice * offered : 0,
         removePrice,
         roomNights: toNum(colP) ?? 0,
-        sonota,
         lodgingFee,
       });
       continue;
@@ -267,9 +263,9 @@ export async function parseRoomChargesFromFile(
         defval: null,
       }) as unknown[][];
 
-      // Hotel name is in row 2 (index 1), column A or C
+      // Hotel name is in row 2 (index 1), column C (A is the label "施設様名")
       const row1 = rows[1] ?? [];
-      const hotelName = cellStr(row1[0]) || cellStr(row1[2]) || "";
+      const hotelName = cellStr(row1[2]) || cellStr(row1[0]) || "";
 
       const { asiaStart, paraStart } = findSectionStarts(rows);
 
