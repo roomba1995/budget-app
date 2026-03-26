@@ -218,12 +218,12 @@ export default function AdminPage() {
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
+            <button
+              onClick={() => window.history.back()}
               className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
             >
-              ← メイン画面
-            </Link>
+              ← 戻る
+            </button>
             <div className="h-4 w-px bg-gray-300" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">管理画面</h1>

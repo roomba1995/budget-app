@@ -89,7 +89,15 @@ export default function HotelsPage() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-50">
-      <h1 className="text-2xl font-bold mb-4">施設一覧</h1>
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          onClick={() => window.history.back()}
+          className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1 transition-colors"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-2xl font-bold">施設一覧</h1>
+      </div>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="space-y-3">
           {hotels.map((hotel) => {

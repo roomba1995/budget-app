@@ -28,168 +28,128 @@ import HotelFormModal from "@/components/HotelFormModal";
 interface RoomRow {
   no: number;
   roomType: string;
-  totalRooms: number;
-  offeredRooms: number;
+  totalRooms: number | null;
+  offeredRooms: number | null;
   preparePrice: number | null;
   mainPrice: number | null;
-  dailyAmount: number;
+  dailyAmount: number | null;
   removePrice: number | null;
-  roomNights: number;
+  roomNights: number | null;
 }
 
 interface RoomChargeSection {
   rooms: RoomRow[];
-  totalRooms: number;
-  offeredRooms: number;
-  roomNights: number;
+  totalRooms: number | null;
+  offeredRooms: number | null;
+  roomNights: number | null;
   dailyCost: number | null;
   dailyCostTax: number | null;
   totalCost: number | null;
   totalCostTax: number | null;
 }
 
+function hasMeaningfulData(sec: RoomChargeSection): boolean {
+  return (sec.rooms?.length ?? 0) > 0 || sec.dailyCost != null || sec.totalCostTax != null;
+}
+
+function fmtNum(v: number | null | undefined): string {
+  return v == null ? "—" : v.toLocaleString("ja-JP") + "円";
+}
+
+function fmtInt(v: number | null | undefined): string {
+  return v == null ? "—" : v.toLocaleString("ja-JP");
+}
+
+const ROOM_CHARGES_STORAGE_KEY = "room-charges-uploaded";
+type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
+
+// ─────────────────────────────────────────────
+// Room charge table components (no hooks — safe to use anywhere)
+// ─────────────────────────────────────────────
+
+function RoomChargeSectionTable({ label, section }: { label: string; section: RoomChargeSection }) {
+  if (!hasMeaningfulData(section)) return null;
+  return (
+    <div className="mb-4">
+      <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs min-w-[600px] border border-gray-100 rounded-lg overflow-hidden">
+          <thead>
+            <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+              <th className="text-left py-2 px-3 font-medium">No.</th>
+              <th className="text-left py-2 px-3 font-medium">客室タイプ</th>
+              <th className="text-right py-2 px-3 font-medium">総客室数</th>
+              <th className="text-right py-2 px-3 font-medium">提供客室</th>
+              <th className="text-right py-2 px-3 font-medium">本番単価</th>
+              <th className="text-right py-2 px-3 font-medium">1日あたり (M×K)</th>
+              <th className="text-right py-2 px-3 font-medium">ルームナイツ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(section.rooms ?? []).map((r) => (
+              <tr key={r.no} className="border-b border-gray-50 hover:bg-blue-50/20">
+                <td className="py-2 px-3 text-gray-400">{r.no}</td>
+                <td className="py-2 px-3 text-gray-700 font-medium">{r.roomType}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.totalRooms)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.offeredRooms)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.mainPrice != null ? r.mainPrice.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-3 text-right tabular-nums font-semibold text-gray-800">{fmtInt(r.dailyAmount)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-600">{fmtInt(r.roomNights)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold text-sm">
+              <td colSpan={2} className="py-2 px-3 text-gray-600">合計</td>
+              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{fmtInt(section.totalRooms)}</td>
+              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{fmtInt(section.offeredRooms)}</td>
+              <td className="py-2 px-3" />
+              <td className="py-2 px-3 text-right tabular-nums text-blue-700">{fmtNum(section.dailyCost)}</td>
+              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{fmtInt(section.roomNights)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-center">
+          <div className="text-blue-500 mb-0.5">1日あたり客室費</div>
+          <div className="font-bold text-blue-800 tabular-nums">{fmtNum(section.dailyCost)}</div>
+        </div>
+        <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 text-center">
+          <div className="text-gray-500 mb-0.5">1日あたり（税込）</div>
+          <div className="font-bold text-gray-800 tabular-nums">{fmtNum(section.dailyCostTax)}</div>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 text-center">
+          <div className="text-green-600 mb-0.5">客室合計</div>
+          <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCost)}</div>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 text-center">
+          <div className="text-emerald-600 mb-0.5">客室合計（税込）</div>
+          <div className="font-bold text-emerald-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoomChargeInTab({ chargeData }: { chargeData: RoomChargesDB[string] | null }) {
+  if (!chargeData) return null;
+  const hasAsia = hasMeaningfulData(chargeData.asia);
+  const hasPara = chargeData.para != null && hasMeaningfulData(chargeData.para);
+  if (!hasAsia && !hasPara) return null;
+  return (
+    <div className="mb-5 pb-5 border-b border-gray-100">
+      <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-1より）</p>
+      {hasAsia && <RoomChargeSectionTable label="◆ アジア競技大会" section={chargeData.asia} />}
+      {hasPara && <RoomChargeSectionTable label="◆ アジアパラ競技大会" section={chargeData.para!} />}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────
 
-const ROOM_CHARGES_STORAGE_KEY = "room-charges-uploaded";
-
-type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
-
-function loadRoomChargesDB(): RoomChargesDB | null {
-  try {
-    const s = localStorage.getItem(ROOM_CHARGES_STORAGE_KEY);
-    if (s) return JSON.parse(s) as RoomChargesDB;
-  } catch { /* ignore */ }
-  return null;
-}
-
-function RoomChargesSection({ facilityNo }: { facilityNo: string | null | undefined }) {
-  const [open, setOpen] = useState(true);
-  const [db, setDb] = useState<RoomChargesDB | null>(null);
-
-  useEffect(() => {
-    // Try localStorage (uploaded Excel) first, then fall back to static JSON
-    const stored = loadRoomChargesDB();
-    if (stored) {
-      setDb(stored);
-      return;
-    }
-    fetch("/budget-app/room-charges.json")
-      .then((r) => r.json())
-      .then((data) => setDb(data as RoomChargesDB))
-      .catch(() => {});
-  }, []);
-
-  // Re-load when Excel is uploaded from admin page (same or other tab)
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === ROOM_CHARGES_STORAGE_KEY && e.newValue) {
-        try { setDb(JSON.parse(e.newValue) as RoomChargesDB); } catch { /* ignore */ }
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
-
-  const chargeData = useMemo(() => {
-    if (!facilityNo || !db) return null;
-    const key = String(parseInt(facilityNo, 10));
-    return db[key] ?? null;
-  }, [facilityNo, db]);
-
-  if (!chargeData) return null;
-
-  const fmt = (v: number | null | undefined) =>
-    v == null ? "—" : v.toLocaleString("ja-JP") + "円";
-
-  function SectionTable({ label, section }: { label: string; section: RoomChargeSection }) {
-    return (
-      <div className="mb-4">
-        <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
-        <div className="overflow-x-auto -mx-0">
-          <table className="w-full text-xs min-w-[600px] border border-gray-100 rounded-lg overflow-hidden">
-            <thead>
-              <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
-                <th className="text-left py-2 px-3 font-medium">No.</th>
-                <th className="text-left py-2 px-3 font-medium">客室タイプ</th>
-                <th className="text-right py-2 px-3 font-medium">総客室数</th>
-                <th className="text-right py-2 px-3 font-medium">提供客室</th>
-                <th className="text-right py-2 px-3 font-medium">本番単価</th>
-                <th className="text-right py-2 px-3 font-medium">1日あたり (M×K)</th>
-                <th className="text-right py-2 px-3 font-medium">ルームナイツ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {section.rooms.map((r) => (
-                <tr key={r.no} className="border-b border-gray-50 hover:bg-blue-50/20">
-                  <td className="py-2 px-3 text-gray-400">{r.no}</td>
-                  <td className="py-2 px-3 text-gray-700 font-medium">{r.roomType}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.totalRooms.toLocaleString("ja-JP")}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.offeredRooms.toLocaleString("ja-JP")}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.mainPrice != null ? r.mainPrice.toLocaleString("ja-JP") : "—"}</td>
-                  <td className="py-2 px-3 text-right tabular-nums font-semibold text-gray-800">{r.dailyAmount.toLocaleString("ja-JP")}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.roomNights.toLocaleString("ja-JP")}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold text-sm">
-                <td colSpan={2} className="py-2 px-3 text-gray-600">合計</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-700">{section.totalRooms.toLocaleString("ja-JP")}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-700">{section.offeredRooms.toLocaleString("ja-JP")}</td>
-                <td className="py-2 px-3" />
-                <td className="py-2 px-3 text-right tabular-nums text-blue-700">{fmt(section.dailyCost)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-gray-700">{section.roomNights.toLocaleString("ja-JP")}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-center">
-            <div className="text-blue-500 mb-0.5">1日あたり客室費</div>
-            <div className="font-bold text-blue-800 tabular-nums">{fmt(section.dailyCost)}</div>
-          </div>
-          <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 text-center">
-            <div className="text-gray-500 mb-0.5">1日あたり（税込）</div>
-            <div className="font-bold text-gray-800 tabular-nums">{fmt(section.dailyCostTax)}</div>
-          </div>
-          <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 text-center">
-            <div className="text-green-600 mb-0.5">客室合計</div>
-            <div className="font-bold text-green-800 tabular-nums">{fmt(section.totalCost)}</div>
-          </div>
-          <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 text-center">
-            <div className="text-emerald-600 mb-0.5">客室合計（税込）</div>
-            <div className="font-bold text-emerald-800 tabular-nums">{fmt(section.totalCostTax)}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-sm transition-transform duration-200" style={{ display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
-          <span className="text-sm font-semibold text-gray-700">客室料金積算</span>
-          <span className="text-xs text-gray-400">（別紙1-1より）</span>
-        </div>
-      </button>
-      {open && (
-        <div className="px-5 pb-5 space-y-4">
-          <SectionTable label="◆ アジア競技大会" section={chargeData.asia} />
-          {chargeData.para && (
-            <SectionTable label="◆ アジアパラ競技大会" section={chargeData.para} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function TabBtn({
   active,
@@ -543,6 +503,28 @@ function HotelDetailInner() {
   const [facilityInfoOpen, setFacilityInfoOpen] = useState(false);
   const [functionRoomOpen, setFunctionRoomOpen] = useState(false);
 
+  // ── Room charge DB (from uploaded Excel or static JSON) ───────────────────
+  const [roomChargeDb, setRoomChargeDb] = useState<RoomChargesDB | null>(null);
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(ROOM_CHARGES_STORAGE_KEY);
+      if (s) { setRoomChargeDb(JSON.parse(s) as RoomChargesDB); return; }
+    } catch { /* ignore */ }
+    fetch("/budget-app/room-charges.json")
+      .then((r) => r.json())
+      .then((data) => setRoomChargeDb(data as RoomChargesDB))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === ROOM_CHARGES_STORAGE_KEY && e.newValue) {
+        try { setRoomChargeDb(JSON.parse(e.newValue) as RoomChargesDB); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
   const [hotelDropdownOpen, setHotelDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -572,6 +554,12 @@ function HotelDetailInner() {
     () => hotels.find((h) => h.id === id),
     [hotels, id]
   );
+
+  const roomChargeData = useMemo(() => {
+    if (!hotel?.facilityNo || !roomChargeDb) return null;
+    const key = String(parseInt(hotel.facilityNo, 10));
+    return roomChargeDb[key] ?? null;
+  }, [hotel, roomChargeDb]);
 
   const [activeCategory, setActiveCategory] = useState<CostCategory | "all">(
     "all"
@@ -659,12 +647,12 @@ function HotelDetailInner() {
       {/* ── Sticky header ── */}
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1 flex-shrink-0 transition-colors"
           >
-            ← メイン画面
-          </Link>
+            ← 戻る
+          </button>
           <span className="text-gray-300 flex-shrink-0 select-none">/</span>
           {/* Hotel switcher dropdown */}
           <div className="flex items-center gap-2 flex-1 min-w-0 relative" ref={dropdownRef}>
@@ -904,8 +892,6 @@ function HotelDetailInner() {
           </div>
         </div>
 
-        {/* ── Room charges from Excel ── */}
-        <RoomChargesSection facilityNo={hotel.facilityNo} />
 
         {/* ── Category tabs + content ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -954,12 +940,17 @@ function HotelDetailInner() {
                 onDelete={handleDelete}
               />
             ) : (
-              <SingleCategoryView
-                stats={categoryStats[activeCategory]}
-                onAdd={() => handleOpenAddModal(activeCategory)}
-                onEdit={handleOpenEditModal}
-                onDelete={handleDelete}
-              />
+              <>
+                {activeCategory === "客室確保費" && (
+                  <RoomChargeInTab chargeData={roomChargeData} />
+                )}
+                <SingleCategoryView
+                  stats={categoryStats[activeCategory]}
+                  onAdd={() => handleOpenAddModal(activeCategory)}
+                  onEdit={handleOpenEditModal}
+                  onDelete={handleDelete}
+                />
+              </>
             )}
           </div>
         </div>
