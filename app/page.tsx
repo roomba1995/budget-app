@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useHotels } from "@/hooks/useHotels";
 import { Hotel, CostItem, Group, GROUPS, GROUP_COLORS } from "@/types";
@@ -32,7 +32,27 @@ export default function Page() {
     updateHotel(id, updates);
   };
 
+  const VALID_TABS: Tab[] = ["hotels", "budget", "execution", "contract", "version", "meal"];
   const [activeTab, setActiveTab] = useState<Tab>("hotels");
+  const [initialSubView, setInitialSubView] = useState<string | undefined>(undefined);
+
+  // Sync tab/view state with URL so history.back() restores the correct tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab") as Tab | null;
+    if (t && VALID_TABS.includes(t)) setActiveTab(t);
+    const v = params.get("view");
+    if (v) setInitialSubView(v);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSetActiveTab = (tab: Tab) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    if (tab !== "budget") url.searchParams.delete("view");
+    window.history.replaceState(null, "", url.toString());
+  };
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedHotelId, setExpandedHotelId] = useState<string | null>(null);
@@ -154,37 +174,37 @@ export default function Page() {
           <div className="flex gap-0 border-b border-gray-200 -mb-px overflow-x-auto">
             <TabButton
               active={activeTab === "hotels"}
-              onClick={() => setActiveTab("hotels")}
+              onClick={() => handleSetActiveTab("hotels")}
             >
               ホテル管理
             </TabButton>
             <TabButton
               active={activeTab === "budget"}
-              onClick={() => setActiveTab("budget")}
+              onClick={() => handleSetActiveTab("budget")}
             >
               予算サマリー
             </TabButton>
             <TabButton
               active={activeTab === "execution"}
-              onClick={() => setActiveTab("execution")}
+              onClick={() => handleSetActiveTab("execution")}
             >
               執行状況
             </TabButton>
             <TabButton
               active={activeTab === "contract"}
-              onClick={() => setActiveTab("contract")}
+              onClick={() => handleSetActiveTab("contract")}
             >
               契約状況
             </TabButton>
             <TabButton
               active={activeTab === "version"}
-              onClick={() => setActiveTab("version")}
+              onClick={() => handleSetActiveTab("version")}
             >
               バージョン比較
             </TabButton>
             <TabButton
               active={activeTab === "meal"}
-              onClick={() => setActiveTab("meal")}
+              onClick={() => handleSetActiveTab("meal")}
             >
               飲食費詳細
             </TabButton>
@@ -288,7 +308,7 @@ export default function Page() {
           </>
         )}
 
-        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} />}
+        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} />}
 
         {activeTab === "execution" && <ExecutionDashboard hotels={hotels} />}
 

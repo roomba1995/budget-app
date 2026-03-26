@@ -14,12 +14,23 @@ import GroupAllocationView from "@/components/GroupAllocationView";
 
 interface Props {
   hotels: Hotel[];
+  initialSubView?: string;
 }
 
 type SubView = "summary" | "allocation";
 
-export default function BudgetSummaryView({ hotels }: Props) {
-  const [subView, setSubView] = useState<SubView>("summary");
+export default function BudgetSummaryView({ hotels, initialSubView }: Props) {
+  const [subView, setSubView] = useState<SubView>(() => {
+    if (initialSubView === "allocation") return "allocation";
+    return "summary";
+  });
+
+  const handleSetSubView = (v: SubView) => {
+    setSubView(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", v);
+    window.history.replaceState(null, "", url.toString());
+  };
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
@@ -77,7 +88,7 @@ export default function BudgetSummaryView({ hotels }: Props) {
       {/* サブナビゲーション */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         <button
-          onClick={() => setSubView("summary")}
+          onClick={() => handleSetSubView("summary")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             subView === "summary"
               ? "bg-white text-gray-800 shadow-sm"
@@ -87,7 +98,7 @@ export default function BudgetSummaryView({ hotels }: Props) {
           費目サマリー
         </button>
         <button
-          onClick={() => setSubView("allocation")}
+          onClick={() => handleSetSubView("allocation")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             subView === "allocation"
               ? "bg-white text-gray-800 shadow-sm"
