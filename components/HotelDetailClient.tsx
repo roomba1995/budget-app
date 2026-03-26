@@ -22,8 +22,147 @@ import CostItemModal from "@/components/CostItemModal";
 import HotelFormModal from "@/components/HotelFormModal";
 
 // ─────────────────────────────────────────────
+// Room charge types
+// ─────────────────────────────────────────────
+
+interface RoomRow {
+  no: number;
+  roomType: string;
+  totalRooms: number;
+  offeredRooms: number;
+  preparePrice: number | null;
+  mainPrice: number | null;
+  dailyAmount: number;
+  removePrice: number | null;
+  roomNights: number;
+}
+
+interface RoomChargeSection {
+  rooms: RoomRow[];
+  totalRooms: number;
+  offeredRooms: number;
+  roomNights: number;
+  dailyCost: number | null;
+  dailyCostTax: number | null;
+  totalCost: number | null;
+  totalCostTax: number | null;
+}
+
+// ─────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────
+
+type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
+
+function RoomChargesSection({ facilityNo }: { facilityNo: string | null | undefined }) {
+  const [open, setOpen] = useState(true);
+  const [db, setDb] = useState<RoomChargesDB | null>(null);
+
+  useEffect(() => {
+    fetch("/room-charges.json")
+      .then((r) => r.json())
+      .then((data) => setDb(data as RoomChargesDB))
+      .catch(() => {});
+  }, []);
+
+  const chargeData = useMemo(() => {
+    if (!facilityNo || !db) return null;
+    const key = String(parseInt(facilityNo, 10));
+    return db[key] ?? null;
+  }, [facilityNo, db]);
+
+  if (!chargeData) return null;
+
+  const fmt = (v: number | null | undefined) =>
+    v == null ? "—" : v.toLocaleString("ja-JP") + "円";
+
+  function SectionTable({ label, section }: { label: string; section: RoomChargeSection }) {
+    return (
+      <div className="mb-4">
+        <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
+        <div className="overflow-x-auto -mx-0">
+          <table className="w-full text-xs min-w-[600px] border border-gray-100 rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <th className="text-left py-2 px-3 font-medium">No.</th>
+                <th className="text-left py-2 px-3 font-medium">客室タイプ</th>
+                <th className="text-right py-2 px-3 font-medium">総客室数</th>
+                <th className="text-right py-2 px-3 font-medium">提供客室</th>
+                <th className="text-right py-2 px-3 font-medium">本番単価</th>
+                <th className="text-right py-2 px-3 font-medium">1日あたり (M×K)</th>
+                <th className="text-right py-2 px-3 font-medium">ルームナイツ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {section.rooms.map((r) => (
+                <tr key={r.no} className="border-b border-gray-50 hover:bg-blue-50/20">
+                  <td className="py-2 px-3 text-gray-400">{r.no}</td>
+                  <td className="py-2 px-3 text-gray-700 font-medium">{r.roomType}</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.totalRooms.toLocaleString("ja-JP")}</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.offeredRooms.toLocaleString("ja-JP")}</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.mainPrice != null ? r.mainPrice.toLocaleString("ja-JP") : "—"}</td>
+                  <td className="py-2 px-3 text-right tabular-nums font-semibold text-gray-800">{r.dailyAmount.toLocaleString("ja-JP")}</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">{r.roomNights.toLocaleString("ja-JP")}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold text-sm">
+                <td colSpan={2} className="py-2 px-3 text-gray-600">合計</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-700">{section.totalRooms.toLocaleString("ja-JP")}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-700">{section.offeredRooms.toLocaleString("ja-JP")}</td>
+                <td className="py-2 px-3" />
+                <td className="py-2 px-3 text-right tabular-nums text-blue-700">{fmt(section.dailyCost)}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-gray-700">{section.roomNights.toLocaleString("ja-JP")}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-center">
+            <div className="text-blue-500 mb-0.5">1日あたり客室費</div>
+            <div className="font-bold text-blue-800 tabular-nums">{fmt(section.dailyCost)}</div>
+          </div>
+          <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 text-center">
+            <div className="text-gray-500 mb-0.5">1日あたり（税込）</div>
+            <div className="font-bold text-gray-800 tabular-nums">{fmt(section.dailyCostTax)}</div>
+          </div>
+          <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 text-center">
+            <div className="text-green-600 mb-0.5">客室合計</div>
+            <div className="font-bold text-green-800 tabular-nums">{fmt(section.totalCost)}</div>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 text-center">
+            <div className="text-emerald-600 mb-0.5">客室合計（税込）</div>
+            <div className="font-bold text-emerald-800 tabular-nums">{fmt(section.totalCostTax)}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400 text-sm transition-transform duration-200" style={{ display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+          <span className="text-sm font-semibold text-gray-700">客室料金積算</span>
+          <span className="text-xs text-gray-400">（別紙1-1より）</span>
+        </div>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 space-y-4">
+          <SectionTable label="◆ アジア競技大会" section={chargeData.asia} />
+          {chargeData.para && (
+            <SectionTable label="◆ アジアパラ競技大会" section={chargeData.para} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TabBtn({
   active,
@@ -737,6 +876,9 @@ function HotelDetailInner() {
             )}
           </div>
         </div>
+
+        {/* ── Room charges from Excel ── */}
+        <RoomChargesSection facilityNo={hotel.facilityNo} />
 
         {/* ── Category tabs + content ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
