@@ -653,6 +653,13 @@ function HotelDetailInner() {
           >
             ← 戻る
           </button>
+          <span className="text-gray-200 flex-shrink-0 select-none">|</span>
+          <Link
+            href="/"
+            className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1 flex-shrink-0 transition-colors"
+          >
+            メイン画面
+          </Link>
           <span className="text-gray-300 flex-shrink-0 select-none">/</span>
           {/* Hotel switcher dropdown */}
           <div className="flex items-center gap-2 flex-1 min-w-0 relative" ref={dropdownRef}>
