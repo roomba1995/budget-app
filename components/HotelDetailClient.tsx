@@ -117,7 +117,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
           <thead>
             <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
               <th className="text-center py-2 px-2 font-medium whitespace-nowrap">No.</th>
-              <th className="text-center py-2 px-2 font-medium">チェックイン日<br/><span className="font-normal text-gray-400">（準備期間開始日）</span></th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">チェックイン日</th>
               <th className="text-center py-2 px-2 font-medium whitespace-nowrap">本番期間開始日</th>
               <th className="text-center py-2 px-2 font-medium whitespace-nowrap">準備泊数</th>
               <th className="text-center py-2 px-2 font-medium whitespace-nowrap">本番期間終了日</th>
