@@ -100,6 +100,38 @@ export default function AdminPage() {
   });
   const colFileRef = useRef<HTMLInputElement>(null);
 
+  // ── Room-charges Excel upload ──────────────────────────────────────────────
+  const [rcMsg, setRcMsg] = useState<string | null>(null);
+  const [rcParsing, setRcParsing] = useState(false);
+  const [rcCount, setRcCount] = useState<number>(() => {
+    try {
+      const s = localStorage.getItem("room-charges-uploaded");
+      if (s) return Object.keys(JSON.parse(s)).length;
+    } catch { /* ignore */ }
+    return 0;
+  });
+  const rcFileRef = useRef<HTMLInputElement>(null);
+
+  const handleRcUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRcParsing(true);
+    setRcMsg(null);
+    try {
+      const { parseRoomChargesFromFile, ROOM_CHARGES_STORAGE_KEY } = await import("@/lib/parseRoomCharges");
+      const { db, count, errors } = await parseRoomChargesFromFile(file);
+      localStorage.setItem(ROOM_CHARGES_STORAGE_KEY, JSON.stringify(db));
+      window.dispatchEvent(new StorageEvent("storage", { key: ROOM_CHARGES_STORAGE_KEY, newValue: JSON.stringify(db) }));
+      setRcCount(count);
+      setRcMsg(`✓ ${count}施設の客室料金データを保存しました。${errors.length > 0 ? `（エラー${errors.length}件）` : ""}`);
+    } catch (err) {
+      setRcMsg(`⚠ エラー: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setRcParsing(false);
+      e.target.value = "";
+    }
+  };
+
   const handleColImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -298,6 +330,47 @@ export default function AdminPage() {
               </div>
             );
           })()}
+        </div>
+
+        {/* 客室料金データ ── Excelアップロード */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-base font-semibold text-gray-800">客室料金データ — Excelアップロード</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              「宿泊費積算根拠.xlsm」をアップロードすると、各ホテルの別紙1-1シートから客室料金を自動取得します
+            </p>
+          </div>
+          <div className="px-5 py-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => rcFileRef.current?.click()}
+              disabled={rcParsing}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-wait transition-colors"
+            >
+              {rcParsing ? "解析中..." : "↑ Excelアップロード (.xlsm / .xlsx)"}
+            </button>
+            <input
+              ref={rcFileRef}
+              type="file"
+              accept=".xlsm,.xlsx,.xls"
+              className="hidden"
+              onChange={handleRcUpload}
+            />
+            {rcCount > 0 && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                現在: {rcCount}施設分のデータ保存済み
+              </span>
+            )}
+            {rcMsg && (
+              <span className={`text-xs ${rcMsg.startsWith("⚠") ? "text-red-500" : "text-green-600"}`}>
+                {rcMsg}
+              </span>
+            )}
+          </div>
+          <div className="px-5 pb-4">
+            <p className="text-xs text-gray-400">
+              アップロードしたデータはブラウザのローカルストレージに保存されます。各ホテルの詳細ページで客室料金積算として表示されます。
+            </p>
+          </div>
         </div>
 
         {/* 施設管理セクション */}

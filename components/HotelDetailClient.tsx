@@ -52,17 +52,44 @@ interface RoomChargeSection {
 // Sub-components
 // ─────────────────────────────────────────────
 
+const ROOM_CHARGES_STORAGE_KEY = "room-charges-uploaded";
+
 type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
+
+function loadRoomChargesDB(): RoomChargesDB | null {
+  try {
+    const s = localStorage.getItem(ROOM_CHARGES_STORAGE_KEY);
+    if (s) return JSON.parse(s) as RoomChargesDB;
+  } catch { /* ignore */ }
+  return null;
+}
 
 function RoomChargesSection({ facilityNo }: { facilityNo: string | null | undefined }) {
   const [open, setOpen] = useState(true);
   const [db, setDb] = useState<RoomChargesDB | null>(null);
 
   useEffect(() => {
-    fetch("/room-charges.json")
+    // Try localStorage (uploaded Excel) first, then fall back to static JSON
+    const stored = loadRoomChargesDB();
+    if (stored) {
+      setDb(stored);
+      return;
+    }
+    fetch("/budget-app/room-charges.json")
       .then((r) => r.json())
       .then((data) => setDb(data as RoomChargesDB))
       .catch(() => {});
+  }, []);
+
+  // Re-load when Excel is uploaded from admin page (same or other tab)
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === ROOM_CHARGES_STORAGE_KEY && e.newValue) {
+        try { setDb(JSON.parse(e.newValue) as RoomChargesDB); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
   }, []);
 
   const chargeData = useMemo(() => {
