@@ -356,19 +356,19 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
     const resolved = new Map<string, ColConfig>(); // key = ColDef.id
     for (const c of cfg) {
       const nl = normLabel(c.label);
-      // 1) Exact ID match
-      if (defs.some((d) => d.id === c.id)) {
-        resolved.set(c.id, c); continue;
-      }
-      // 2) LABEL_TO_ID lookup (normalized — handles full↔half-width parens)
+      // 1) LABEL_TO_ID lookup (normalized — takes priority over stored ID to fix stale configs)
       const targetId = normalizedLabelMap[nl];
       if (targetId && defs.some((d) => d.id === targetId) && !resolved.has(targetId)) {
         resolved.set(targetId, { ...c, id: targetId }); continue;
       }
-      // 3) Direct COL_DEF label match (catches anything LABEL_TO_ID doesn't cover)
+      // 2) Direct COL_DEF label match (catches anything LABEL_TO_ID doesn't cover)
       const directId = colDefByLabel.get(nl);
       if (directId && !resolved.has(directId)) {
-        resolved.set(directId, { ...c, id: directId });
+        resolved.set(directId, { ...c, id: directId }); continue;
+      }
+      // 3) Exact ID match fallback (for custom labels not in LABEL_TO_ID)
+      if (defs.some((d) => d.id === c.id) && !resolved.has(c.id)) {
+        resolved.set(c.id, c);
       }
     }
 

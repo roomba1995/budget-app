@@ -43,11 +43,13 @@ for (const [k, v] of Object.entries(LABEL_TO_ID)) {
 /** Resolve a config entry's id to the canonical COL_DEF id.
  *  Priority: 1) exact COL_DEF ID, 2) LABEL_TO_ID lookup (normalized) */
 function resolveColId(id: string, label: string): string {
-  if (COL_DEF_IDS.has(id)) return id;
+  // Label-based lookup takes priority — corrects stale IDs from old CSV exports
   const nl = norm(label);
   const byLabel = NORM_LABEL_TO_ID[nl];
   if (byLabel && COL_DEF_IDS.has(byLabel)) return byLabel;
-  return id; // unknown – keep as-is (custom label)
+  // Fall back to explicit ID for custom labels not in LABEL_TO_ID
+  if (COL_DEF_IDS.has(id)) return id;
+  return id; // unknown custom id — keep as-is
 }
 
 function loadColConfig(): ColConfig[] {
