@@ -67,13 +67,13 @@ export default function Page() {
         if (rcRaw) {
           setRoomChargeDb(JSON.parse(rcRaw));
         } else {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/room-charges.json`);
+          const res = await fetch(`/budget-app/room-charges.json`);
           if (res.ok) setRoomChargeDb(await res.json());
         }
         if (mrRaw) {
           setMeetingRoomDb(JSON.parse(mrRaw));
         } else {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/meeting-rooms.json`);
+          const res = await fetch(`/budget-app/meeting-rooms.json`);
           if (res.ok) setMeetingRoomDb(await res.json());
         }
       } catch { /* ignore */ }
