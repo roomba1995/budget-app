@@ -523,18 +523,18 @@ function SingleCategoryView({
         )}
       </div>
       {items.length === 0 ? (
+        !showAdd ? null : (
         <div className="text-center py-16 text-gray-400">
           <div className="text-4xl mb-3">📋</div>
           <p className="mb-3">この費目にはデータがありません</p>
-          {showAdd && (
-            <button
-              onClick={onAdd}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              ＋ 費用を追加する
-            </button>
-          )}
+          <button
+            onClick={onAdd}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            ＋ 費用を追加する
+          </button>
         </div>
+        )
       ) : (
         <CostTable
           items={items}
