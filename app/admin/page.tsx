@@ -110,6 +110,12 @@ export default function AdminPage() {
     } catch { /* ignore */ }
     return 0;
   });
+  const [rcErrors, setRcErrors] = useState<string[]>([]);
+  const [mrErrors, setMrErrors] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [rcDetails, setRcDetails] = useState<Record<string, any> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [mrDetails, setMrDetails] = useState<Record<string, any> | null>(null);
   const rcFileRef = useRef<HTMLInputElement>(null);
 
   // ── Meal-costs Excel upload ────────────────────────────────────────────────
@@ -129,6 +135,10 @@ export default function AdminPage() {
     if (!file) return;
     setRcParsing(true);
     setRcMsg(null);
+    setRcErrors([]);
+    setMrErrors([]);
+    setRcDetails(null);
+    setMrDetails(null);
     try {
       const [
         { parseRoomChargesFromFile, ROOM_CHARGES_STORAGE_KEY },
@@ -146,6 +156,10 @@ export default function AdminPage() {
       window.dispatchEvent(new StorageEvent("storage", { key: ROOM_CHARGES_STORAGE_KEY, newValue: JSON.stringify(rcResult.db) }));
       window.dispatchEvent(new StorageEvent("storage", { key: MEETING_ROOMS_STORAGE_KEY, newValue: JSON.stringify(mrResult.db) }));
       setRcCount(rcResult.count);
+      setRcErrors(rcResult.errors);
+      setMrErrors(mrResult.errors);
+      setRcDetails(rcResult.db);
+      setMrDetails(mrResult.db);
       const errs = rcResult.errors.length + mrResult.errors.length;
       setRcMsg(`✓ 別紙1-1: ${rcResult.count}施設、別紙1-2: ${mrResult.count}施設のデータを保存しました。${errs > 0 ? `（エラー${errs}件）` : ""}`);
     } catch (err) {
@@ -419,6 +433,117 @@ export default function AdminPage() {
               アップロードしたデータはブラウザのローカルストレージに保存されます。各ホテルの詳細ページで客室料金積算として表示されます。
             </p>
           </div>
+
+          {/* エラー詳細 */}
+          {(rcErrors.length > 0 || mrErrors.length > 0) && (
+            <div className="px-5 pb-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="text-xs font-semibold text-red-700 mb-2">パースエラー詳細（{rcErrors.length + mrErrors.length}件）</div>
+                <div className="space-y-1 max-h-48 overflow-y-auto font-mono text-xs text-red-800">
+                  {rcErrors.map((e, i) => <div key={`rc${i}`} className="py-0.5 border-b border-red-100">【別紙1-1】{e}</div>)}
+                  {mrErrors.map((e, i) => <div key={`mr${i}`} className="py-0.5 border-b border-red-100">【別紙1-2】{e}</div>)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 別紙1-1 パース結果一覧 */}
+          {rcDetails && Object.keys(rcDetails).length > 0 && (
+            <div className="px-5 pb-4">
+              <div className="text-xs font-semibold text-gray-600 mb-2">別紙1-1 パース結果（客室料金）</div>
+              <div className="overflow-x-auto max-h-64 overflow-y-auto border border-gray-100 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-gray-50">
+                    <tr className="border-b border-gray-100 text-gray-500 text-left">
+                      <th className="px-2 py-1.5 font-medium">施設No</th>
+                      <th className="px-2 py-1.5 font-medium">施設名</th>
+                      <th className="px-2 py-1.5 font-medium">区分</th>
+                      <th className="px-2 py-1.5 font-medium text-right">部屋数</th>
+                      <th className="px-2 py-1.5 font-medium text-right">1日あたり</th>
+                      <th className="px-2 py-1.5 font-medium text-right">1日あたり(税込)</th>
+                      <th className="px-2 py-1.5 font-medium text-right">合計(税別)</th>
+                      <th className="px-2 py-1.5 font-medium text-right">合計(税込)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(rcDetails as Record<string, { hotelName: string; asia: { rooms: unknown[]; dailyCost: number | null; dailyCostTax: number | null; totalCost: number | null; totalCostTax: number | null } | null; para: { rooms: unknown[]; dailyCost: number | null; dailyCostTax: number | null; totalCost: number | null; totalCostTax: number | null } | null }>)
+                      .sort(([a], [b]) => Number(a) - Number(b))
+                      .flatMap(([no, entry]) =>
+                        [
+                          entry.asia ? { no, name: entry.hotelName, sec: "アジア", data: entry.asia } : null,
+                          entry.para ? { no, name: entry.hotelName, sec: "パラ", data: entry.para } : null,
+                        ].filter(Boolean)
+                      )
+                      .map((row, i) => {
+                        if (!row) return null;
+                        const miss = row.data.totalCostTax == null && row.data.totalCost == null;
+                        return (
+                          <tr key={i} className={`border-b border-gray-50 ${miss ? "bg-amber-50" : ""}`}>
+                            <td className="px-2 py-1 font-mono text-gray-500">{row.no}</td>
+                            <td className="px-2 py-1 text-gray-800 max-w-[180px] truncate">{row.name}</td>
+                            <td className="px-2 py-1 text-gray-500">{row.sec}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.rooms.length}行</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.dailyCost != null ? row.data.dailyCost.toLocaleString() : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.dailyCostTax != null ? row.data.dailyCostTax.toLocaleString() : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCost != null ? row.data.totalCost.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCostTax != null ? row.data.totalCostTax.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-amber-600 mt-1">※ 黄色ハイライト = 合計金額が取得できなかった施設</p>
+            </div>
+          )}
+
+          {/* 別紙1-2 パース結果一覧 */}
+          {mrDetails && Object.keys(mrDetails).length > 0 && (
+            <div className="px-5 pb-4">
+              <div className="text-xs font-semibold text-gray-600 mb-2">別紙1-2 パース結果（会議室等確保費）</div>
+              <div className="overflow-x-auto max-h-48 overflow-y-auto border border-gray-100 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-gray-50">
+                    <tr className="border-b border-gray-100 text-gray-500 text-left">
+                      <th className="px-2 py-1.5 font-medium">施設No</th>
+                      <th className="px-2 py-1.5 font-medium">施設名</th>
+                      <th className="px-2 py-1.5 font-medium">区分</th>
+                      <th className="px-2 py-1.5 font-medium text-right">行数</th>
+                      <th className="px-2 py-1.5 font-medium text-right">1日あたり</th>
+                      <th className="px-2 py-1.5 font-medium text-right">合計(税別)</th>
+                      <th className="px-2 py-1.5 font-medium text-right">合計(税込)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(mrDetails as Record<string, { hotelName: string; asia: { rows: unknown[]; dailyCost: number | null; totalCost: number | null; totalCostTax: number | null } | null; para: { rows: unknown[]; dailyCost: number | null; totalCost: number | null; totalCostTax: number | null } | null }>)
+                      .sort(([a], [b]) => Number(a) - Number(b))
+                      .flatMap(([no, entry]) =>
+                        [
+                          entry.asia ? { no, name: entry.hotelName, sec: "アジア", data: entry.asia } : null,
+                          entry.para ? { no, name: entry.hotelName, sec: "パラ", data: entry.para } : null,
+                        ].filter(Boolean)
+                      )
+                      .map((row, i) => {
+                        if (!row) return null;
+                        const miss = row.data.totalCostTax == null && row.data.totalCost == null;
+                        return (
+                          <tr key={i} className={`border-b border-gray-50 ${miss ? "bg-amber-50" : ""}`}>
+                            <td className="px-2 py-1 font-mono text-gray-500">{row.no}</td>
+                            <td className="px-2 py-1 text-gray-800 max-w-[180px] truncate">{row.name}</td>
+                            <td className="px-2 py-1 text-gray-500">{row.sec}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.rows.length}行</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.dailyCost != null ? row.data.dailyCost.toLocaleString() : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCost != null ? row.data.totalCost.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCostTax != null ? row.data.totalCostTax.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-amber-600 mt-1">※ 黄色ハイライト = 合計金額が取得できなかった施設</p>
+            </div>
+          )}
         </div>
 
         {/* 飲食費データ ── Excelアップロード */}
