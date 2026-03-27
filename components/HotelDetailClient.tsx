@@ -49,6 +49,11 @@ interface RoomRow {
   bedSizeW: number | null;
   bedSizeH: number | null;
   bedCount: number | null;
+  bath: string | null;
+  lanWired: string | null;
+  lanWireless: string | null;
+  sonota: string | null;
+  dailyOccupancyRef: number | null;
 }
 
 interface RoomChargeSection {
@@ -110,6 +115,8 @@ interface MeetingRoomRow {
   lanWired: string | null;
   lanWiredPrice: number | null;
   lanWireless: string | null;
+  lanWirelessPrice: number | null;
+  sonota: string | null;
 }
 
 interface MeetingRoomSection {
@@ -181,6 +188,11 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">利用人数</th>
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">ベッドサイズ(cm)</th>
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">ベッド数(台)</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">浴室</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">有線LAN</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">無線LAN</th>
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">その他</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">人数参考</th>
             </tr>
           </thead>
           <tbody>
@@ -206,6 +218,11 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.occupancy)}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.bedSizeW != null && r.bedSizeH != null ? `${r.bedSizeW}×${r.bedSizeH}` : r.bedSizeW != null ? String(r.bedSizeW) : "—"}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.bedCount)}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.bath ?? "—"}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.lanWired ?? "—"}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.lanWireless ?? "—"}</td>
+                <td className="py-2 px-2 text-gray-600 max-w-xs whitespace-pre-wrap">{r.sonota ?? "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.dailyOccupancyRef)}</td>
               </tr>
             ))}
           </tbody>
@@ -219,7 +236,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
               <td className="py-2 px-2" />
               <td className="py-2 px-2 text-right tabular-nums text-gray-700">{fmtInt(section.roomNights)}</td>
               <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.totalCostTax ?? section.totalCost)}</td>
-              <td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" />
+              <td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" />
             </tr>
           </tfoot>
         </table>
@@ -316,6 +333,8 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
               <th className="text-center py-2 px-2 font-medium whitespace-nowrap">有線<br/>LAN</th>
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">有線LAN<br/>料金</th>
               <th className="text-center py-2 px-2 font-medium whitespace-nowrap">無線<br/>LAN</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">無線LAN<br/>料金</th>
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">その他</th>
             </tr>
           </thead>
           <tbody>
@@ -341,6 +360,8 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
                 <td className="py-2 px-2 text-center text-gray-600">{r.lanWired ?? "—"}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.lanWiredPrice != null ? r.lanWiredPrice.toLocaleString("ja-JP") : "—"}</td>
                 <td className="py-2 px-2 text-center text-gray-600">{r.lanWireless ?? "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.lanWirelessPrice != null ? r.lanWirelessPrice.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-gray-600 max-w-xs whitespace-pre-wrap">{r.sonota ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -351,7 +372,7 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
               <td colSpan={8} className="py-2 px-2" />
               <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.dailyCost)}</td>
               <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.totalCostTax ?? section.totalCost)}</td>
-              <td colSpan={5} className="py-2 px-2" />
+              <td colSpan={7} className="py-2 px-2" />
             </tr>
           </tfoot>
         </table>

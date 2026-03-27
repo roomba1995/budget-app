@@ -28,6 +28,8 @@ export interface MeetingRoomRow {
   lanWired: string | null;
   lanWiredPrice: number | null;
   lanWireless: string | null;
+  lanWirelessPrice: number | null;
+  sonota: string | null;
 }
 
 export interface MeetingRoomSection {
@@ -167,6 +169,8 @@ function parseSection(rows: unknown[][], startRow: number, endRow: number): Meet
         lanWired: cellStr(g(17)) || null,
         lanWiredPrice: toNum(g(18)),
         lanWireless: cellStr(g(19)) || null,
+        lanWirelessPrice: toNum(g(20)),
+        sonota: cellStr(g(21)) || null,
       });
       continue;
     }

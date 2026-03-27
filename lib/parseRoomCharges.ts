@@ -27,6 +27,11 @@ export interface RoomRow {
   bedSizeW: number | null;
   bedSizeH: number | null;
   bedCount: number | null;
+  bath: string | null;
+  lanWired: string | null;
+  lanWireless: string | null;
+  sonota: string | null;
+  dailyOccupancyRef: number | null;
 }
 
 export interface RoomChargeSection {
@@ -184,6 +189,11 @@ function parseSection(
         bedSizeW: toNum(row[21]),
         bedSizeH: toNum(row[23]),
         bedCount: toNum(row[24]),
+        bath: cellStr(row[25]) || null,
+        lanWired: cellStr(row[27]) || null,
+        lanWireless: cellStr(row[29]) || null,
+        sonota: cellStr(row[30]) || null,
+        dailyOccupancyRef: toNum(row[31]),
       });
       continue;
     }
