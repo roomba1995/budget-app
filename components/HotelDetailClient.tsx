@@ -221,7 +221,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
                 <td className="py-2 px-2 text-center text-gray-600">{r.bath ?? "—"}</td>
                 <td className="py-2 px-2 text-center text-gray-600">{r.lanWired ?? "—"}</td>
                 <td className="py-2 px-2 text-center text-gray-600">{r.lanWireless ?? "—"}</td>
-                <td className="py-2 px-2 text-gray-600 max-w-xs whitespace-pre-wrap">{r.sonota ?? "—"}</td>
+                <td className="py-2 px-2 text-gray-600 whitespace-nowrap min-w-[220px]">{r.sonota ?? "—"}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.dailyOccupancyRef)}</td>
               </tr>
             ))}
@@ -361,7 +361,7 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.lanWiredPrice != null ? r.lanWiredPrice.toLocaleString("ja-JP") : "—"}</td>
                 <td className="py-2 px-2 text-center text-gray-600">{r.lanWireless ?? "—"}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.lanWirelessPrice != null ? r.lanWirelessPrice.toLocaleString("ja-JP") : "—"}</td>
-                <td className="py-2 px-2 text-gray-600 max-w-xs whitespace-pre-wrap">{r.sonota ?? "—"}</td>
+                <td className="py-2 px-2 text-gray-600 whitespace-nowrap min-w-[220px]">{r.sonota ?? "—"}</td>
               </tr>
             ))}
           </tbody>
