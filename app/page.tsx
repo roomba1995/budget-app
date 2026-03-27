@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useHotels } from "@/hooks/useHotels";
 import { Hotel, CostItem, Group, GROUPS, GROUP_COLORS } from "@/types";
 import SummarySection from "@/components/SummarySection";
+import type { RoomChargesDB } from "@/lib/parseRoomCharges";
+import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
 import HotelCard from "@/components/HotelCard";
 import HotelFormModal from "@/components/HotelFormModal";
 import CostItemModal from "@/components/CostItemModal";
@@ -53,6 +55,38 @@ export default function Page() {
     if (tab !== "budget") url.searchParams.delete("view");
     window.history.replaceState(null, "", url.toString());
   };
+  // Excel DB for room charges and meeting rooms
+  const [roomChargeDb, setRoomChargeDb] = useState<RoomChargesDB | null>(null);
+  const [meetingRoomDb, setMeetingRoomDb] = useState<MeetingRoomsDB | null>(null);
+
+  useEffect(() => {
+    const loadDb = async () => {
+      try {
+        const rcRaw = localStorage.getItem("room-charges-v2-uploaded");
+        const mrRaw = localStorage.getItem("meeting-rooms-v1-uploaded");
+        if (rcRaw) {
+          setRoomChargeDb(JSON.parse(rcRaw));
+        } else {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/room-charges.json`);
+          if (res.ok) setRoomChargeDb(await res.json());
+        }
+        if (mrRaw) {
+          setMeetingRoomDb(JSON.parse(mrRaw));
+        } else {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/meeting-rooms.json`);
+          if (res.ok) setMeetingRoomDb(await res.json());
+        }
+      } catch { /* ignore */ }
+    };
+    loadDb();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "room-charges-v2-uploaded" && e.newValue) setRoomChargeDb(JSON.parse(e.newValue));
+      if (e.key === "meeting-rooms-v1-uploaded" && e.newValue) setMeetingRoomDb(JSON.parse(e.newValue));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedHotelId, setExpandedHotelId] = useState<string | null>(null);
@@ -240,7 +274,7 @@ export default function Page() {
         {activeTab === "hotels" && (
           <>
             {/* Summary */}
-            <SummarySection hotels={hotels} />
+            <SummarySection hotels={hotels} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} />
 
             {/* Group Filter */}
             <div className="flex flex-wrap items-center gap-2">

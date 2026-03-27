@@ -7,27 +7,64 @@ import {
   calcVariance,
   formatCurrency,
 } from "@/types";
+import type { RoomChargesDB } from "@/lib/parseRoomCharges";
+import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
 
 interface Props {
   hotels: Hotel[];
+  roomChargeDb?: RoomChargesDB | null;
+  meetingRoomDb?: MeetingRoomsDB | null;
 }
 
-export default function SummarySection({ hotels }: Props) {
+const EXCEL_CATEGORIES = ["客室確保費", "会議室等確保費"] as const;
+
+/** Returns the Excel-derived actual amount split by asia/para for a hotel. */
+function getExcelActuals(
+  hotel: Hotel,
+  roomChargeDb: RoomChargesDB | null | undefined,
+  meetingRoomDb: MeetingRoomsDB | null | undefined
+): { asia: number | null; para: number | null } {
+  const key = hotel.facilityNo;
+  if (!key) return { asia: null, para: null };
+
+  const rc = roomChargeDb?.[key];
+  const mr = meetingRoomDb?.[key];
+  if (!rc && !mr) return { asia: null, para: null };
+
+  const rcAsia = rc?.asia?.totalCostTax ?? rc?.asia?.totalCost ?? null;
+  const rcPara = rc?.para?.totalCostTax ?? rc?.para?.totalCost ?? null;
+  const mrAsia = mr?.asia?.totalCostTax ?? mr?.asia?.totalCost ?? null;
+  const mrPara = mr?.para?.totalCostTax ?? mr?.para?.totalCost ?? null;
+
+  const asia = rcAsia != null || mrAsia != null ? (rcAsia ?? 0) + (mrAsia ?? 0) : null;
+  const para = rcPara != null || mrPara != null ? (rcPara ?? 0) + (mrPara ?? 0) : null;
+  return { asia, para };
+}
+
+export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb }: Props) {
   const totalBudget = hotels.reduce(
     (s, h) => s + h.costItems.reduce((ss, i) => ss + i.budgetAmount, 0),
     0
   );
-  const totalActual = hotels.reduce(
-    (s, h) => s + h.costItems.reduce((ss, i) => ss + i.actualAmount, 0),
-    0
-  );
+
+  // For total actual: replace 客室確保費/会議室等確保費 with Excel data where available
+  const totalActual = hotels.reduce((s, h) => {
+    const ex = getExcelActuals(h, roomChargeDb, meetingRoomDb);
+    const hasExcel = ex.asia != null || ex.para != null;
+    if (!hasExcel) return s + h.costItems.reduce((ss, i) => ss + i.actualAmount, 0);
+    const otherActual = h.costItems
+      .filter((i) => !(EXCEL_CATEGORIES as readonly string[]).includes(i.category))
+      .reduce((ss, i) => ss + i.actualAmount, 0);
+    return s + otherActual + (ex.asia ?? 0) + (ex.para ?? 0);
+  }, 0);
+
   const variance = calcVariance(totalBudget, totalActual);
   const varianceRate =
     totalBudget > 0
       ? ((totalActual - totalBudget) / totalBudget) * 100
       : 0;
 
-  // Category breakdown
+  // Category breakdown (keep as-is from costItems for non-Excel categories)
   const categoryTotals = COST_CATEGORIES.map((cat) => {
     const budget = hotels.reduce(
       (s, h) =>
@@ -37,28 +74,53 @@ export default function SummarySection({ hotels }: Props) {
           .reduce((ss, i) => ss + i.budgetAmount, 0),
       0
     );
-    const actual = hotels.reduce(
-      (s, h) =>
-        s +
-        h.costItems
-          .filter((i) => i.category === cat)
-          .reduce((ss, i) => ss + i.actualAmount, 0),
-      0
-    );
+    const actual = hotels.reduce((s, h) => {
+      if ((EXCEL_CATEGORIES as readonly string[]).includes(cat)) {
+        const ex = getExcelActuals(h, roomChargeDb, meetingRoomDb);
+        const hasExcel = ex.asia != null || ex.para != null;
+        if (hasExcel) {
+          // For 客室確保費: room charges total; for 会議室等確保費: meeting rooms total
+          const rc = roomChargeDb?.[h.facilityNo ?? ""];
+          const mr = meetingRoomDb?.[h.facilityNo ?? ""];
+          if (cat === "客室確保費") {
+            const v = (rc?.asia?.totalCostTax ?? rc?.asia?.totalCost ?? 0)
+                    + (rc?.para?.totalCostTax ?? rc?.para?.totalCost ?? 0);
+            return s + v;
+          } else {
+            const v = (mr?.asia?.totalCostTax ?? mr?.asia?.totalCost ?? 0)
+                    + (mr?.para?.totalCostTax ?? mr?.para?.totalCost ?? 0);
+            return s + v;
+          }
+        }
+      }
+      return s + h.costItems.filter((i) => i.category === cat).reduce((ss, i) => ss + i.actualAmount, 0);
+    }, 0);
     return { cat, budget, actual };
   }).filter((x) => x.budget > 0 || x.actual > 0);
 
-  // Group breakdown
+  // Group breakdown — split Excel actuals by Asia/Para based on group prefix
   const groupStats = GROUPS.map((g) => {
+    const isAsiaGroup = g.startsWith("アジア");
+    const isParaGroup = g.startsWith("パラ");
     const groupHotels = hotels.filter((h) => h.groups.includes(g));
     const budget = groupHotels.reduce(
       (s, h) => s + h.costItems.reduce((ss, i) => ss + i.budgetAmount, 0),
       0
     );
-    const actual = groupHotels.reduce(
-      (s, h) => s + h.costItems.reduce((ss, i) => ss + i.actualAmount, 0),
-      0
-    );
+    const actual = groupHotels.reduce((s, h) => {
+      const ex = getExcelActuals(h, roomChargeDb, meetingRoomDb);
+      const hasExcel = ex.asia != null || ex.para != null;
+      if (!hasExcel) return s + h.costItems.reduce((ss, i) => ss + i.actualAmount, 0);
+      const otherActual = h.costItems
+        .filter((i) => !(EXCEL_CATEGORIES as readonly string[]).includes(i.category))
+        .reduce((ss, i) => ss + i.actualAmount, 0);
+      const excelPortion = isAsiaGroup
+        ? (ex.asia ?? 0)
+        : isParaGroup
+        ? (ex.para ?? 0)
+        : (ex.asia ?? 0) + (ex.para ?? 0);
+      return s + otherActual + excelPortion;
+    }, 0);
     return { g, count: groupHotels.length, budget, actual };
   }).filter((x) => x.count > 0);
 
