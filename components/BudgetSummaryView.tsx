@@ -11,15 +11,19 @@ import {
   formatCurrency,
 } from "@/types";
 import GroupAllocationView from "@/components/GroupAllocationView";
+import type { RoomChargesDB } from "@/lib/parseRoomCharges";
+import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
 
 interface Props {
   hotels: Hotel[];
   initialSubView?: string;
+  roomChargeDb?: RoomChargesDB | null;
+  meetingRoomDb?: MeetingRoomsDB | null;
 }
 
 type SubView = "summary" | "allocation";
 
-export default function BudgetSummaryView({ hotels, initialSubView }: Props) {
+export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb, meetingRoomDb }: Props) {
   const [subView, setSubView] = useState<SubView>(() => {
     if (initialSubView === "allocation") return "allocation";
     return "summary";
@@ -110,7 +114,7 @@ export default function BudgetSummaryView({ hotels, initialSubView }: Props) {
       </div>
 
       {subView === "allocation" && (
-        <GroupAllocationView hotels={hotels} />
+        <GroupAllocationView hotels={hotels} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} />
       )}
 
       {subView === "summary" && (

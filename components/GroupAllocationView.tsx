@@ -3,9 +3,13 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Hotel, Group, GROUPS, GROUP_COLORS, formatCurrency } from "@/types";
+import type { RoomChargesDB } from "@/lib/parseRoomCharges";
+import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
 
 interface Props {
   hotels: Hotel[];
+  roomChargeDb?: RoomChargesDB | null;
+  meetingRoomDb?: MeetingRoomsDB | null;
 }
 
 // ─────────────────────────────────────────────
@@ -25,6 +29,10 @@ interface Extra {
   roomBudget: number;
   roomActual: number;
   funcBudget: number;
+  roomActualExcel: number | null;
+  funcActualExcel: number | null;
+  dailyRoomExcel: number | null;
+  dailyFuncExcel: number | null;
 }
 
 function numOrDash(v: number | undefined | null): string {
@@ -128,12 +136,18 @@ const COL_DEFS: ColDef[] = [
     render: (_h, ex) => ex.nights > 0 ? `${ex.nights} 泊` : "—" },
   { id: "dailyRoomBudget", label: "1日あたり\n客室費（予算）", defaultVisible: true, group: "日程・集計", align: "right",
     render: (_h, ex) => ex.nights > 0 && ex.roomBudget > 0 ? formatCurrency(Math.round(ex.roomBudget / ex.nights)) : "—" },
+  { id: "dailyRoomActual", label: "1日あたり\n客室費（実績）", defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => ex.dailyRoomExcel != null ? formatCurrency(Math.round(ex.dailyRoomExcel)) : (ex.nights > 0 && ex.roomActual > 0 ? formatCurrency(Math.round(ex.roomActual / ex.nights)) : "—") },
   { id: "roomBudgetTotal", label: "客室総計\n（予算）",  defaultVisible: true,  group: "日程・集計", align: "right",
     render: (_h, ex) => yenOrDash(ex.roomBudget) },
-  { id: "roomActualTotal", label: "客室総計\n（実績）",  defaultVisible: false, group: "日程・集計", align: "right",
-    render: (_h, ex) => yenOrDash(ex.roomActual) },
+  { id: "roomActualTotal", label: "客室総計\n（実績）",  defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.roomActualExcel ?? ex.roomActual) },
   { id: "funcBudgetTotal", label: "ファンクション\n総計（予算）", defaultVisible: false, group: "日程・集計", align: "right",
     render: (_h, ex) => yenOrDash(ex.funcBudget) },
+  { id: "funcActualTotal", label: "会議室等確保費\n合計（実績）", defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.funcActualExcel) },
+  { id: "dailyFuncActual", label: "1日あたり\nファンクション費（実績）", defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => ex.dailyFuncExcel != null ? formatCurrency(Math.round(ex.dailyFuncExcel)) : "—" },
 ];
 
 function fmtDate(d: string): string {
@@ -273,15 +287,24 @@ export const LABEL_TO_ID: Record<string, string> = {
   "宿泊夜数": "nights",  // old
   "1日あたり客室費（予算）": "dailyRoomBudget",
   "1日あたり\n客室費（予算）": "dailyRoomBudget",
+  "一日あたり宿泊総額": "dailyRoomActual",
+  "1日あたり客室費（実績）": "dailyRoomActual",
+  "1日あたり\n客室費（実績）": "dailyRoomActual",
   "客室総計（予算）": "roomBudgetTotal",
   "客室総計\n（予算）": "roomBudgetTotal",
   "客室確保費(予算)": "roomBudgetTotal",  // old
   "客室総計（実績）": "roomActualTotal",
   "客室総計\n（実績）": "roomActualTotal",
   "客室確保費(実績)": "roomActualTotal",  // old
+  "客室確保費合計": "roomActualTotal",
   "ファンクション総計（予算）": "funcBudgetTotal",
   "ファンクション\n総計（予算）": "funcBudgetTotal",
   "会議室等確保費(予算)": "funcBudgetTotal",  // old
+  "会議室等確保費合計（実績）": "funcActualTotal",
+  "会議室等確保費合計": "funcActualTotal",
+  "一日あたりファンクション総額": "dailyFuncActual",
+  "1日あたりファンクション費（実績）": "dailyFuncActual",
+  "1日あたり\nファンクション費（実績）": "dailyFuncActual",
 };
 
 /** Normalize a label for robust matching:
@@ -359,7 +382,7 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
 }
 
 // ─────────────────────────────────────────────
-export default function GroupAllocationView({ hotels }: Props) {
+export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomDb }: Props) {
   const [selectedGroup, setSelectedGroup] = useState<Group>(GROUPS[0]);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => loadHidden());
   const [colPanelOpen, setColPanelOpen] = useState(false);
@@ -441,18 +464,50 @@ export default function GroupAllocationView({ hotels }: Props) {
     return { dateRange: dates };
   }, [groupHotels]);
 
-  const totals = useMemo(() => groupHotels.reduce(
-    (acc, h) => {
-      const rc = h.costItems.filter((i) => i.category === "客室確保費");
-      const fc = h.costItems.filter((i) => i.category === "会議室等確保費");
-      return {
-        budget: acc.budget + rc.reduce((s, i) => s + i.budgetAmount, 0),
-        actual: acc.actual + rc.reduce((s, i) => s + i.actualAmount, 0),
-        offeredRooms: acc.offeredRooms + (h.offeredRooms ?? 0),
-      };
-    },
-    { budget: 0, actual: 0, offeredRooms: 0 }
-  ), [groupHotels]);
+  const totals = useMemo(() => {
+    const isAsia = selectedGroup.startsWith("アジア");
+    const isPara = selectedGroup.startsWith("パラ");
+    return groupHotels.reduce(
+      (acc, h) => {
+        const rc = h.costItems.filter((i) => i.category === "客室確保費");
+        const fc = h.costItems.filter((i) => i.category === "会議室等確保費");
+        const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
+        const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
+        const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
+
+        let roomActualExcel: number | null = null;
+        if (rcEntry) {
+          if (isAsia) roomActualExcel = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? null;
+          else if (isPara) roomActualExcel = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? null;
+          else {
+            const a = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? 0;
+            const p = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? 0;
+            roomActualExcel = (a + p) || null;
+          }
+        }
+        let funcActualExcel: number | null = null;
+        if (mrEntry) {
+          if (isAsia) funcActualExcel = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? null;
+          else if (isPara) funcActualExcel = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? null;
+          else {
+            const a = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? 0;
+            const p = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? 0;
+            funcActualExcel = (a + p) || null;
+          }
+        }
+
+        return {
+          budget: acc.budget + rc.reduce((s, i) => s + i.budgetAmount, 0),
+          actual: acc.actual + (roomActualExcel ?? rc.reduce((s, i) => s + i.actualAmount, 0)),
+          funcActual: acc.funcActual + (funcActualExcel ?? fc.reduce((s, i) => s + i.actualAmount, 0)),
+          offeredRooms: acc.offeredRooms + (h.offeredRooms ?? 0),
+          hasExcelRc: acc.hasExcelRc || roomActualExcel != null,
+          hasExcelMr: acc.hasExcelMr || funcActualExcel != null,
+        };
+      },
+      { budget: 0, actual: 0, funcActual: 0, offeredRooms: 0, hasExcelRc: false, hasExcelMr: false }
+    );
+  }, [groupHotels, selectedGroup, roomChargeDb, meetingRoomDb]);
 
   const colGroups = useMemo(() => {
     const map = new Map<string, ColDef[]>();
@@ -481,7 +536,7 @@ export default function GroupAllocationView({ hotels }: Props) {
       </div>
 
       {/* KPIカード */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-xs text-gray-500 mb-1">対象ホテル数</div>
           <div className="text-2xl font-bold text-gray-800">{groupHotels.length}<span className="text-sm font-normal text-gray-500 ml-1">件</span></div>
@@ -498,8 +553,16 @@ export default function GroupAllocationView({ hotels }: Props) {
           <div className="text-lg font-bold text-gray-800">{totals.budget > 0 ? formatCurrency(totals.budget) : "—"}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="text-xs text-gray-500 mb-1">客室確保費（実績）</div>
+          <div className="text-xs text-gray-500 mb-1">
+            客室確保費（実績）{totals.hasExcelRc && <span className="text-blue-500 ml-1 text-xs">Excel</span>}
+          </div>
           <div className="text-lg font-bold text-gray-800">{totals.actual > 0 ? formatCurrency(totals.actual) : "—"}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-xs text-gray-500 mb-1">
+            会議室等確保費（実績）{totals.hasExcelMr && <span className="text-blue-500 ml-1 text-xs">Excel</span>}
+          </div>
+          <div className="text-lg font-bold text-gray-800">{totals.funcActual > 0 ? formatCurrency(totals.funcActual) : "—"}</div>
         </div>
       </div>
 
@@ -583,11 +646,48 @@ export default function GroupAllocationView({ hotels }: Props) {
                 {groupHotels.map((h) => {
                   const rc = h.costItems.filter((i) => i.category === "客室確保費");
                   const fc = h.costItems.filter((i) => i.category === "会議室等確保費");
+                  const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
+                  const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
+                  const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
+                  const isAsia = selectedGroup.startsWith("アジア");
+                  const isPara = selectedGroup.startsWith("パラ");
+
+                  let roomActualExcel: number | null = null;
+                  let dailyRoomExcel: number | null = null;
+                  if (rcEntry) {
+                    const sec = isAsia ? rcEntry.asia : isPara ? rcEntry.para : null;
+                    if (sec) {
+                      roomActualExcel = sec.totalCostTax ?? sec.totalCost ?? null;
+                      dailyRoomExcel = sec.dailyCostTax ?? sec.dailyCost ?? null;
+                    } else if (!isAsia && !isPara) {
+                      const a = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? 0;
+                      const p = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? 0;
+                      roomActualExcel = (a + p) || null;
+                    }
+                  }
+                  let funcActualExcel: number | null = null;
+                  let dailyFuncExcel: number | null = null;
+                  if (mrEntry) {
+                    const sec = isAsia ? mrEntry.asia : isPara ? mrEntry.para : null;
+                    if (sec) {
+                      funcActualExcel = sec.totalCostTax ?? sec.totalCost ?? null;
+                      dailyFuncExcel = sec.dailyCostTax ?? sec.dailyCost ?? null;
+                    } else if (!isAsia && !isPara) {
+                      const a = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? 0;
+                      const p = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? 0;
+                      funcActualExcel = (a + p) || null;
+                    }
+                  }
+
                   const ex: Extra = {
                     nights: nightsBetween(h.contractStartDate, h.contractEndDate),
                     roomBudget: rc.reduce((s, i) => s + i.budgetAmount, 0),
                     roomActual: rc.reduce((s, i) => s + i.actualAmount, 0),
                     funcBudget: fc.reduce((s, i) => s + i.budgetAmount, 0),
+                    roomActualExcel,
+                    funcActualExcel,
+                    dailyRoomExcel,
+                    dailyFuncExcel,
                   };
                   return (
                     <tr key={h.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -611,6 +711,7 @@ export default function GroupAllocationView({ hotels }: Props) {
                     if (c.id === "offeredRooms") cell = totals.offeredRooms > 0 ? <span className="text-blue-600">{totals.offeredRooms.toLocaleString()} 室</span> : "—";
                     if (c.id === "roomBudgetTotal") cell = yenOrDash(totals.budget);
                     if (c.id === "roomActualTotal") cell = yenOrDash(totals.actual);
+                    if (c.id === "funcActualTotal") cell = yenOrDash(totals.funcActual);
                     return (
                       <td key={c.id} className={`py-3 px-3 whitespace-nowrap text-${c.align ?? "right"}`}>
                         {cell}

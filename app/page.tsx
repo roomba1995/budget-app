@@ -342,7 +342,7 @@ export default function Page() {
           </>
         )}
 
-        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} />}
+        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} />}
 
         {activeTab === "execution" && <ExecutionDashboard hotels={hotels} />}
 
