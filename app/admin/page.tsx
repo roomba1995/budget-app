@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useHotels, MergeAlert } from "@/hooks/useHotels";
 import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/types";
@@ -80,6 +80,139 @@ function exportColConfigCsv() {
   URL.revokeObjectURL(url);
 }
 
+// ── ParseResultTable ──────────────────────────────────────────────────────────
+
+function fmt(v: unknown): string {
+  if (v == null) return "—";
+  if (typeof v === "number") return v.toLocaleString("ja-JP");
+  return String(v);
+}
+
+interface SectionSummary {
+  rooms: number;
+  dailyCost: number | null;
+  dailyCostTax: number | null;
+  totalCost: number | null;
+  totalCostTax: number | null;
+}
+
+function extractSection(s: unknown): SectionSummary | null {
+  if (!s || typeof s !== "object") return null;
+  const o = s as Record<string, unknown>;
+  const rooms = Array.isArray(o.rooms) ? o.rooms.length : 0;
+  return {
+    rooms,
+    dailyCost: typeof o.dailyCost === "number" ? o.dailyCost : null,
+    dailyCostTax: typeof o.dailyCostTax === "number" ? o.dailyCostTax : null,
+    totalCost: typeof o.totalCost === "number" ? o.totalCost : null,
+    totalCostTax: typeof o.totalCostTax === "number" ? o.totalCostTax : null,
+  };
+}
+
+function SectionCells({ s }: { s: SectionSummary | null }) {
+  if (!s) return <><td className="px-3 py-1.5 text-gray-300 text-center" colSpan={5}>—</td></>;
+  const missing = s.totalCost == null && s.totalCostTax == null;
+  const cls = missing ? "text-amber-700 bg-amber-50" : "text-gray-600";
+  return (
+    <>
+      <td className={`px-3 py-1.5 tabular-nums text-right ${cls}`}>{s.rooms}</td>
+      <td className={`px-3 py-1.5 tabular-nums text-right ${cls}`}>{fmt(s.dailyCost)}</td>
+      <td className={`px-3 py-1.5 tabular-nums text-right ${cls}`}>{fmt(s.dailyCostTax)}</td>
+      <td className={`px-3 py-1.5 tabular-nums text-right ${missing ? "font-semibold text-amber-700 bg-amber-50" : cls}`}>{fmt(s.totalCost)}</td>
+      <td className={`px-3 py-1.5 tabular-nums text-right ${missing ? "font-semibold text-amber-700 bg-amber-50" : cls}`}>{fmt(s.totalCostTax)}</td>
+    </>
+  );
+}
+
+function ParseResultTable({
+  rcDb,
+  mrDb,
+}: {
+  rcDb: Record<string, unknown> | null;
+  mrDb: Record<string, unknown> | null;
+}) {
+  const colHeaders = (
+    <tr className="border-b border-gray-100">
+      <th className="px-3 py-2 text-left font-medium text-gray-500 w-16">No.</th>
+      <th className="px-3 py-2 text-left font-medium text-gray-500">施設名</th>
+      <th className="px-3 py-2 text-left font-medium text-gray-500 w-12">区分</th>
+      <th className="px-3 py-2 text-right font-medium text-gray-500">部屋数</th>
+      <th className="px-3 py-2 text-right font-medium text-gray-500">1日あたり</th>
+      <th className="px-3 py-2 text-right font-medium text-gray-500">1日(税込)</th>
+      <th className="px-3 py-2 text-right font-medium text-gray-500">合計</th>
+      <th className="px-3 py-2 text-right font-medium text-gray-500">合計(税込)</th>
+    </tr>
+  );
+
+  function renderDb(db: Record<string, unknown> | null) {
+    if (!db) return null;
+    const entries = Object.entries(db).sort(([a], [b]) => Number(a) - Number(b));
+    return entries.flatMap(([no, entry]) => {
+      if (!entry || typeof entry !== "object") return [];
+      const e = entry as Record<string, unknown>;
+      const name = typeof e.hotelName === "string" ? e.hotelName : "";
+      const asia = extractSection(e.asia);
+      const para = extractSection(e.para);
+      const rows = [];
+      if (asia) {
+        const missing = asia.totalCost == null && asia.totalCostTax == null;
+        rows.push(
+          <tr key={`${no}-asia`} className={`border-b border-gray-50 hover:bg-gray-50 ${missing ? "bg-amber-50/40" : ""}`}>
+            <td className="px-3 py-1.5 font-mono text-xs text-gray-400">{no}</td>
+            <td className="px-3 py-1.5 text-gray-800 text-xs">{name}</td>
+            <td className="px-3 py-1.5 text-xs text-blue-600 font-medium">アジア</td>
+            <SectionCells s={asia} />
+          </tr>
+        );
+      }
+      if (para) {
+        const missing = para.totalCost == null && para.totalCostTax == null;
+        rows.push(
+          <tr key={`${no}-para`} className={`border-b border-gray-50 hover:bg-gray-50 ${missing ? "bg-amber-50/40" : ""}`}>
+            <td className="px-3 py-1.5 font-mono text-xs text-gray-400">{no}</td>
+            <td className="px-3 py-1.5 text-gray-800 text-xs">{name}</td>
+            <td className="px-3 py-1.5 text-xs text-purple-600 font-medium">パラ</td>
+            <SectionCells s={para} />
+          </tr>
+        );
+      }
+      return rows;
+    });
+  }
+
+  return (
+    <div className="px-5 pb-4 space-y-4">
+      {rcDb && (
+        <div>
+          <div className="text-xs font-semibold text-gray-600 mb-1.5">
+            別紙1-1 パース結果（{Object.keys(rcDb).length}施設）
+            <span className="ml-2 font-normal text-amber-600">※ 橙色ハイライト = 合計金額が取得できていない行</span>
+          </div>
+          <div className="border border-gray-200 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-gray-50">{colHeaders}</thead>
+              <tbody>{renderDb(rcDb)}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {mrDb && (
+        <div>
+          <div className="text-xs font-semibold text-gray-600 mb-1.5">
+            別紙1-2 パース結果（{Object.keys(mrDb).length}施設）
+          </div>
+          <div className="border border-gray-200 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-gray-50">{colHeaders}</thead>
+              <tbody>{renderDb(mrDb)}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const {
     hotels,
@@ -95,40 +228,40 @@ export default function AdminPage() {
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [colImportMsg, setColImportMsg] = useState<string | null>(null);
-  const [colPreview, setColPreview] = useState<ColConfig[]>(() => {
-    try { const s = localStorage.getItem(COL_CONFIG_KEY); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  const [colPreview, setColPreview] = useState<ColConfig[]>([]);
   const colFileRef = useRef<HTMLInputElement>(null);
 
   // ── Room-charges Excel upload ──────────────────────────────────────────────
   const [rcMsg, setRcMsg] = useState<string | null>(null);
   const [rcParsing, setRcParsing] = useState(false);
-  const [rcCount, setRcCount] = useState<number>(() => {
-    try {
-      const s = localStorage.getItem("room-charges-uploaded");
-      if (s) return Object.keys(JSON.parse(s)).length;
-    } catch { /* ignore */ }
-    return 0;
-  });
+  const [rcCount, setRcCount] = useState<number>(0);
   const [rcErrors, setRcErrors] = useState<string[]>([]);
   const [mrErrors, setMrErrors] = useState<string[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [rcDetails, setRcDetails] = useState<Record<string, any> | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [mrDetails, setMrDetails] = useState<Record<string, any> | null>(null);
+  const [rcDetails, setRcDetails] = useState<Record<string, unknown> | null>(null);
+  const [mrDetails, setMrDetails] = useState<Record<string, unknown> | null>(null);
   const rcFileRef = useRef<HTMLInputElement>(null);
 
   // ── Meal-costs Excel upload ────────────────────────────────────────────────
   const [mcMsg, setMcMsg] = useState<string | null>(null);
   const [mcParsing, setMcParsing] = useState(false);
-  const [mcCount, setMcCount] = useState<number>(() => {
-    try {
-      const s = localStorage.getItem("meal-costs-v1-uploaded");
-      if (s) return Object.keys(JSON.parse(s)).length;
-    } catch { /* ignore */ }
-    return 0;
-  });
+  const [mcCount, setMcCount] = useState<number>(0);
   const mcFileRef = useRef<HTMLInputElement>(null);
+
+  // Load localStorage after mount only — prevents SSR/hydration mismatch
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(COL_CONFIG_KEY);
+      if (s) setColPreview(JSON.parse(s));
+    } catch { /* ignore */ }
+    try {
+      const s1 = localStorage.getItem("room-charges-v2-uploaded");
+      if (s1) setRcCount(Object.keys(JSON.parse(s1)).length);
+    } catch { /* ignore */ }
+    try {
+      const s2 = localStorage.getItem("meal-costs-v1-uploaded");
+      if (s2) setMcCount(Object.keys(JSON.parse(s2)).length);
+    } catch { /* ignore */ }
+  }, []);
 
   const handleRcUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -447,102 +580,9 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* 別紙1-1 パース結果一覧 */}
-          {rcDetails && Object.keys(rcDetails).length > 0 && (
-            <div className="px-5 pb-4">
-              <div className="text-xs font-semibold text-gray-600 mb-2">別紙1-1 パース結果（客室料金）</div>
-              <div className="overflow-x-auto max-h-64 overflow-y-auto border border-gray-100 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-gray-50">
-                    <tr className="border-b border-gray-100 text-gray-500 text-left">
-                      <th className="px-2 py-1.5 font-medium">施設No</th>
-                      <th className="px-2 py-1.5 font-medium">施設名</th>
-                      <th className="px-2 py-1.5 font-medium">区分</th>
-                      <th className="px-2 py-1.5 font-medium text-right">部屋数</th>
-                      <th className="px-2 py-1.5 font-medium text-right">1日あたり</th>
-                      <th className="px-2 py-1.5 font-medium text-right">1日あたり(税込)</th>
-                      <th className="px-2 py-1.5 font-medium text-right">合計(税別)</th>
-                      <th className="px-2 py-1.5 font-medium text-right">合計(税込)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(rcDetails as Record<string, { hotelName: string; asia: { rooms: unknown[]; dailyCost: number | null; dailyCostTax: number | null; totalCost: number | null; totalCostTax: number | null } | null; para: { rooms: unknown[]; dailyCost: number | null; dailyCostTax: number | null; totalCost: number | null; totalCostTax: number | null } | null }>)
-                      .sort(([a], [b]) => Number(a) - Number(b))
-                      .flatMap(([no, entry]) =>
-                        [
-                          entry.asia ? { no, name: entry.hotelName, sec: "アジア", data: entry.asia } : null,
-                          entry.para ? { no, name: entry.hotelName, sec: "パラ", data: entry.para } : null,
-                        ].filter(Boolean)
-                      )
-                      .map((row, i) => {
-                        if (!row) return null;
-                        const miss = row.data.totalCostTax == null && row.data.totalCost == null;
-                        return (
-                          <tr key={i} className={`border-b border-gray-50 ${miss ? "bg-amber-50" : ""}`}>
-                            <td className="px-2 py-1 font-mono text-gray-500">{row.no}</td>
-                            <td className="px-2 py-1 text-gray-800 max-w-[180px] truncate">{row.name}</td>
-                            <td className="px-2 py-1 text-gray-500">{row.sec}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.rooms.length}行</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.dailyCost != null ? row.data.dailyCost.toLocaleString() : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.dailyCostTax != null ? row.data.dailyCostTax.toLocaleString() : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCost != null ? row.data.totalCost.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCostTax != null ? row.data.totalCostTax.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-amber-600 mt-1">※ 黄色ハイライト = 合計金額が取得できなかった施設</p>
-            </div>
-          )}
-
-          {/* 別紙1-2 パース結果一覧 */}
-          {mrDetails && Object.keys(mrDetails).length > 0 && (
-            <div className="px-5 pb-4">
-              <div className="text-xs font-semibold text-gray-600 mb-2">別紙1-2 パース結果（会議室等確保費）</div>
-              <div className="overflow-x-auto max-h-48 overflow-y-auto border border-gray-100 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-gray-50">
-                    <tr className="border-b border-gray-100 text-gray-500 text-left">
-                      <th className="px-2 py-1.5 font-medium">施設No</th>
-                      <th className="px-2 py-1.5 font-medium">施設名</th>
-                      <th className="px-2 py-1.5 font-medium">区分</th>
-                      <th className="px-2 py-1.5 font-medium text-right">行数</th>
-                      <th className="px-2 py-1.5 font-medium text-right">1日あたり</th>
-                      <th className="px-2 py-1.5 font-medium text-right">合計(税別)</th>
-                      <th className="px-2 py-1.5 font-medium text-right">合計(税込)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(mrDetails as Record<string, { hotelName: string; asia: { rows: unknown[]; dailyCost: number | null; totalCost: number | null; totalCostTax: number | null } | null; para: { rows: unknown[]; dailyCost: number | null; totalCost: number | null; totalCostTax: number | null } | null }>)
-                      .sort(([a], [b]) => Number(a) - Number(b))
-                      .flatMap(([no, entry]) =>
-                        [
-                          entry.asia ? { no, name: entry.hotelName, sec: "アジア", data: entry.asia } : null,
-                          entry.para ? { no, name: entry.hotelName, sec: "パラ", data: entry.para } : null,
-                        ].filter(Boolean)
-                      )
-                      .map((row, i) => {
-                        if (!row) return null;
-                        const miss = row.data.totalCostTax == null && row.data.totalCost == null;
-                        return (
-                          <tr key={i} className={`border-b border-gray-50 ${miss ? "bg-amber-50" : ""}`}>
-                            <td className="px-2 py-1 font-mono text-gray-500">{row.no}</td>
-                            <td className="px-2 py-1 text-gray-800 max-w-[180px] truncate">{row.name}</td>
-                            <td className="px-2 py-1 text-gray-500">{row.sec}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.rows.length}行</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.dailyCost != null ? row.data.dailyCost.toLocaleString() : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCost != null ? row.data.totalCost.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
-                            <td className="px-2 py-1 text-right tabular-nums">{row.data.totalCostTax != null ? row.data.totalCostTax.toLocaleString() : <span className={miss ? "text-amber-500 font-semibold" : "text-gray-300"}>—</span>}</td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-amber-600 mt-1">※ 黄色ハイライト = 合計金額が取得できなかった施設</p>
-            </div>
+          {/* 別紙1-1 / 1-2 パース結果一覧 */}
+          {(rcDetails || mrDetails) && (
+            <ParseResultTable rcDb={rcDetails} mrDb={mrDetails} />
           )}
         </div>
 
