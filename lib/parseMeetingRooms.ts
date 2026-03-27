@@ -43,7 +43,7 @@ export interface MeetingRoomSection {
 
 export interface MeetingRoomEntry {
   hotelName: string;
-  asia: MeetingRoomSection;
+  asia: MeetingRoomSection | null;
   para: MeetingRoomSection | null;
 }
 
@@ -241,16 +241,16 @@ export async function parseMeetingRoomsFromFile(
       const hotelName = cellStr(row1[2]) || cellStr(row1[0]) || "";
 
       const { asiaStart, paraStart } = findSectionStarts(rows);
-      if (asiaStart < 0) {
-        errors.push(`"${sheetName}": アジアセクションが見つかりません`);
+      if (asiaStart < 0 && paraStart < 0) {
+        errors.push(`"${sheetName}": セクションが見つかりません`);
         continue;
       }
 
       const asiaEnd = paraStart >= 0 ? paraStart : rows.length;
-      const asia = parseSection(rows, asiaStart + 1, asiaEnd);
+      const asia = asiaStart >= 0 ? parseSection(rows, asiaStart + 1, asiaEnd) : null;
       const para = paraStart >= 0 ? parseSection(rows, paraStart + 1, rows.length) : null;
 
-      if (!asia) {
+      if (!asia && !para) {
         errors.push(`"${sheetName}": データが見つかりません`);
         continue;
       }

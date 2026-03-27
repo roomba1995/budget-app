@@ -47,7 +47,7 @@ export interface RoomChargeSection {
 
 export interface RoomChargeEntry {
   hotelName: string;
-  asia: RoomChargeSection;
+  asia: RoomChargeSection | null;
   para: RoomChargeSection | null;
 }
 
@@ -291,19 +291,20 @@ export async function parseRoomChargesFromFile(
 
       const { asiaStart, paraStart } = findSectionStarts(rows);
 
-      if (asiaStart < 0) {
-        errors.push(`"${sheetName}": アジアセクションが見つかりません`);
+      if (asiaStart < 0 && paraStart < 0) {
+        errors.push(`"${sheetName}": セクションが見つかりません`);
         continue;
       }
 
       const asiaEnd = paraStart >= 0 ? paraStart : rows.length;
-      const asia = parseSection(rows, asiaStart + 1, asiaEnd);
+      const asia =
+        asiaStart >= 0 ? parseSection(rows, asiaStart + 1, asiaEnd) : null;
       const para =
         paraStart >= 0
           ? parseSection(rows, paraStart + 1, rows.length)
           : null;
 
-      if (!asia) {
+      if (!asia && !para) {
         errors.push(`"${sheetName}": データが見つかりません`);
         continue;
       }

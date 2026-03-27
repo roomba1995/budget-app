@@ -265,13 +265,13 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
 
 function RoomChargeInTab({ chargeData }: { chargeData: RoomChargesDB[string] | null }) {
   if (!chargeData) return null;
-  const hasAsia = hasMeaningfulData(chargeData.asia);
+  const hasAsia = chargeData.asia != null && hasMeaningfulData(chargeData.asia);
   const hasPara = chargeData.para != null && hasMeaningfulData(chargeData.para);
   if (!hasAsia && !hasPara) return null;
   return (
     <div className="mb-5 pb-5 border-b border-gray-100">
       <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-1より）</p>
-      {hasAsia && <RoomChargeSectionTable label="◆ アジア競技大会" section={chargeData.asia} />}
+      {hasAsia && <RoomChargeSectionTable label="◆ アジア競技大会" section={chargeData.asia!} />}
       {hasPara && <RoomChargeSectionTable label="◆ アジアパラ競技大会" section={chargeData.para!} />}
     </div>
   );
@@ -401,13 +401,13 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
 
 function MeetingRoomInTab({ meetingData }: { meetingData: MeetingRoomsDB[string] | null }) {
   if (!meetingData) return null;
-  const hasAsia = (meetingData.asia?.rooms?.length ?? 0) > 0;
+  const hasAsia = meetingData.asia != null && (meetingData.asia.rooms?.length ?? 0) > 0;
   const hasPara = meetingData.para != null && (meetingData.para.rooms?.length ?? 0) > 0;
   if (!hasAsia && !hasPara) return null;
   return (
     <div className="mb-5 pb-5 border-b border-gray-100">
       <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-2より）</p>
-      {hasAsia && <MeetingRoomSectionTable label="◆ アジア競技大会" section={meetingData.asia} />}
+      {hasAsia && <MeetingRoomSectionTable label="◆ アジア競技大会" section={meetingData.asia!} />}
       {hasPara && <MeetingRoomSectionTable label="◆ アジアパラ競技大会" section={meetingData.para!} />}
     </div>
   );
