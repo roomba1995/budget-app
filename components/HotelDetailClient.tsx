@@ -484,11 +484,13 @@ function SingleCategoryView({
   onAdd,
   onEdit,
   onDelete,
+  showAdd = true,
 }: {
   stats: { items: CostItem[]; budget: number; actual: number };
   onAdd: () => void;
   onEdit: (item: CostItem) => void;
   onDelete: (id: string, desc: string) => void;
+  showAdd?: boolean;
 }) {
   const { items, budget, actual } = stats;
   const v = calcVariance(budget, actual);
@@ -511,23 +513,27 @@ function SingleCategoryView({
           </span>
           <span className={`font-medium ${v.className}`}>{v.text}</span>
         </div>
-        <button
-          onClick={onAdd}
-          className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 flex-shrink-0"
-        >
-          ＋ 費用追加
-        </button>
+        {showAdd && (
+          <button
+            onClick={onAdd}
+            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 flex-shrink-0"
+          >
+            ＋ 費用追加
+          </button>
+        )}
       </div>
       {items.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <div className="text-4xl mb-3">📋</div>
           <p className="mb-3">この費目にはデータがありません</p>
-          <button
-            onClick={onAdd}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            ＋ 費用を追加する
-          </button>
+          {showAdd && (
+            <button
+              onClick={onAdd}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              ＋ 費用を追加する
+            </button>
+          )}
         </div>
       ) : (
         <CostTable
@@ -653,15 +659,6 @@ function HotelDetailInner() {
   }
 
   const totals = calcHotelTotals(hotel);
-  const variance = calcVariance(totals.budget, totals.actual);
-  const executedTotal = hotel.costItems.reduce(
-    (s, i) => s + (i.executedAmount || 0),
-    0
-  );
-  const executionPct =
-    totals.actual > 0
-      ? Math.min(100, Math.round((executedTotal / totals.actual) * 100))
-      : 0;
 
   const categoryStats: CategoryStats = COST_CATEGORIES.reduce((acc, cat) => {
     const items = hotel.costItems.filter((i) => i.category === cat);
@@ -672,6 +669,37 @@ function HotelDetailInner() {
     };
     return acc;
   }, {} as CategoryStats);
+
+  // 客室確保費の実績はExcel取込データ（客室合計税込）を優先する
+  const roomChargeActual: number | null = (() => {
+    if (!roomChargeData) return null;
+    const asiaTax = roomChargeData.asia?.totalCostTax ?? roomChargeData.asia?.totalCost ?? null;
+    const paraTax = roomChargeData.para?.totalCostTax ?? roomChargeData.para?.totalCost ?? null;
+    if (asiaTax == null && paraTax == null) return null;
+    return (asiaTax ?? 0) + (paraTax ?? 0);
+  })();
+
+  if (roomChargeActual != null) {
+    categoryStats["客室確保費"] = {
+      ...categoryStats["客室確保費"],
+      actual: roomChargeActual,
+    };
+  }
+
+  const adjustedActual = roomChargeActual != null
+    ? totals.actual - (hotel.costItems.filter(i => i.category === "客室確保費").reduce((s, i) => s + i.actualAmount, 0)) + roomChargeActual
+    : totals.actual;
+  const adjustedTotals = { ...totals, actual: adjustedActual };
+
+  const variance = calcVariance(adjustedTotals.budget, adjustedTotals.actual);
+  const executedTotal = hotel.costItems.reduce(
+    (s, i) => s + (i.executedAmount || 0),
+    0
+  );
+  const executionPct =
+    adjustedTotals.actual > 0
+      ? Math.min(100, Math.round((executedTotal / adjustedTotals.actual) * 100))
+      : 0;
 
   const handleOpenAddModal = (cat?: CostCategory) => {
     setEditingItem(null);
@@ -821,7 +849,7 @@ function HotelDetailInner() {
             <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 text-xl">📊</div>
             <div>
               <div className="text-xs text-gray-500 mb-0.5">実績額</div>
-              <div className="text-base font-bold text-gray-800 tabular-nums">{formatCurrency(totals.actual)}</div>
+              <div className="text-base font-bold text-gray-800 tabular-nums">{formatCurrency(adjustedTotals.actual)}</div>
             </div>
           </div>
           {/* 予実乖離 */}
@@ -1016,6 +1044,7 @@ function HotelDetailInner() {
                   onAdd={() => handleOpenAddModal(activeCategory)}
                   onEdit={handleOpenEditModal}
                   onDelete={handleDelete}
+                  showAdd={!(activeCategory === "客室確保費" && roomChargeActual != null)}
                 />
               </>
             )}
