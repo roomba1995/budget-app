@@ -132,14 +132,12 @@ function parseSection(
     const colA = row[0];
     const colJ = row[9];
     const colK = row[10];
-    const colL = row[11];
     const colM = row[12];
     const colP = row[15];
     const colQ = row[16];
 
     const strA = cellStr(colA);
     const strI = cellStr(row[8]);
-    const strL = cellStr(colL);
     const rowText = (row as unknown[]).map((c) => cellStr(c)).join("");
 
     // ── Data rows: A = integer No., I = room type text ───────────────────────
@@ -206,22 +204,39 @@ function parseSection(
       continue;
     }
 
-    // ── 1日あたり row (L column) ──────────────────────────────────────────────
-    if (strL.includes("1日あたり") || strL.includes("１日あたり")) {
-      dailyCost = toNum(colM);
-      foundDailyCost = true;
-      continue;
+    // ── 1日あたり / 税込 rows ─────────────────────────────────────────────────
+    // Scan entire row because label column shifts between hotels.
+    // "1日あたり" label → first positive numeric value to its right is dailyCost.
+    // "税込"  label appearing after foundDailyCost → same logic for dailyCostTax.
+    {
+      let matchedDailyRow = false;
+      let matchedTaxRow = false;
+      for (let c = 0; c < row.length - 1; c++) {
+        const lbl = cellStr(row[c]);
+        if (!foundDailyCost && (lbl.includes("1日あたり") || lbl.includes("１日あたり"))) {
+          for (let v = c + 1; v < row.length; v++) {
+            const n = toNum(row[v]);
+            if (n != null && n > 0) { dailyCost = n; foundDailyCost = true; matchedDailyRow = true; break; }
+          }
+        }
+        if (foundDailyCost && !matchedTaxRow && (lbl === "税込" || (lbl.includes("税込") && !lbl.includes("総")))) {
+          for (let v = c + 1; v < row.length; v++) {
+            const n = toNum(row[v]);
+            if (n != null && n > 0) { dailyCostTax = n; matchedTaxRow = true; break; }
+          }
+        }
+      }
+      if (matchedDailyRow || matchedTaxRow) continue;
     }
 
-    // ── 税込 row (L column, comes right after 1日あたり) ──────────────────────
-    if (foundDailyCost && (strL === "税込" || strL.includes("税込"))) {
-      dailyCostTax = toNum(colM);
-      continue;
-    }
-
-    // ── 総宿泊料金 rows (value in C column = index 2) ─────────────────────────
-    if (rowText.includes("総宿泊料金")) {
-      const val = toNum(row[2]);
+    // ── 総宿泊料金 rows ───────────────────────────────────────────────────────
+    // Scan entire row for the value — column position varies between hotels.
+    if (rowText.includes("総宿泊料金") || rowText.includes("宿泊料金合計") || rowText.includes("客室確保費合計")) {
+      let val: number | null = null;
+      for (let c = 1; c < row.length; c++) {
+        const n = toNum(row[c]);
+        if (n != null && n > 0) { val = n; break; }
+      }
       const isTax =
         rowText.includes("税込") ||
         rowText.includes("税サ込") ||
