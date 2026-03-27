@@ -33,6 +33,7 @@ interface Extra {
   funcActualExcel: number | null;
   dailyRoomExcel: number | null;
   dailyFuncExcel: number | null;
+  facilityTotal: number | null;  // sum of all categories with Excel overrides
 }
 
 function numOrDash(v: number | undefined | null): string {
@@ -134,19 +135,23 @@ const COL_DEFS: ColDef[] = [
     render: (h) => h.contractEndDate ? fmtDate(h.contractEndDate) : "—" },
   { id: "nights", label: "確保\n泊数", defaultVisible: true, group: "日程・集計", align: "right",
     render: (_h, ex) => ex.nights > 0 ? `${ex.nights} 泊` : "—" },
-  { id: "dailyRoomBudget", label: "1日あたり\n客室費（予算）", defaultVisible: true, group: "日程・集計", align: "right",
-    render: (_h, ex) => ex.nights > 0 && ex.roomBudget > 0 ? formatCurrency(Math.round(ex.roomBudget / ex.nights)) : "—" },
-  { id: "dailyRoomActual", label: "1日あたり\n客室費（実績）", defaultVisible: true, group: "日程・集計", align: "right",
-    render: (_h, ex) => ex.dailyRoomExcel != null ? formatCurrency(Math.round(ex.dailyRoomExcel)) : (ex.nights > 0 && ex.roomActual > 0 ? formatCurrency(Math.round(ex.roomActual / ex.nights)) : "—") },
-  { id: "roomBudgetTotal", label: "客室総計\n（予算）",  defaultVisible: true,  group: "日程・集計", align: "right",
-    render: (_h, ex) => yenOrDash(ex.roomBudget) },
-  { id: "roomActualTotal", label: "客室総計\n（実績）",  defaultVisible: true, group: "日程・集計", align: "right",
-    render: (_h, ex) => yenOrDash(ex.roomActualExcel ?? ex.roomActual) },
-  { id: "funcBudgetTotal", label: "ファンクション\n総計（予算）", defaultVisible: false, group: "日程・集計", align: "right",
-    render: (_h, ex) => yenOrDash(ex.funcBudget) },
-  { id: "funcActualTotal", label: "会議室等確保費\n合計（実績）", defaultVisible: true, group: "日程・集計", align: "right",
+  // dailyRoomBudget: user CSV may label this "一日あたり宿泊総額" — prefer Excel daily cost
+  { id: "dailyRoomBudget", label: "1日あたり\n客室費", defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => ex.dailyRoomExcel != null ? formatCurrency(Math.round(ex.dailyRoomExcel)) : (ex.nights > 0 && ex.roomBudget > 0 ? formatCurrency(Math.round(ex.roomBudget / ex.nights)) : "—") },
+  { id: "dailyRoomActual", label: "1日あたり\n客室費（実績）", defaultVisible: false, group: "日程・集計", align: "right",
+    render: (_h, ex) => ex.dailyRoomExcel != null ? formatCurrency(Math.round(ex.dailyRoomExcel)) : "—" },
+  // roomBudgetTotal: user CSV may label this "客室確保費合計" — prefer Excel room actual
+  { id: "roomBudgetTotal", label: "客室確保費\n合計",  defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.roomActualExcel ?? ex.roomBudget) },
+  { id: "roomActualTotal", label: "施設合計",  defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.facilityTotal) },
+  // funcBudgetTotal: user CSV may label this "会議室等確保費合計" — prefer Excel meeting room actual
+  { id: "funcBudgetTotal", label: "会議室等確保費\n合計", defaultVisible: true, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.funcActualExcel ?? ex.funcBudget) },
+  // dailyFuncActual: user CSV may label this "一日あたりファンクション総額"
+  { id: "funcActualTotal", label: "会議室等確保費\n合計（実績）", defaultVisible: false, group: "日程・集計", align: "right",
     render: (_h, ex) => yenOrDash(ex.funcActualExcel) },
-  { id: "dailyFuncActual", label: "1日あたり\nファンクション費（実績）", defaultVisible: true, group: "日程・集計", align: "right",
+  { id: "dailyFuncActual", label: "1日あたり\nファンクション費", defaultVisible: true, group: "日程・集計", align: "right",
     render: (_h, ex) => ex.dailyFuncExcel != null ? formatCurrency(Math.round(ex.dailyFuncExcel)) : "—" },
 ];
 
@@ -287,21 +292,22 @@ export const LABEL_TO_ID: Record<string, string> = {
   "宿泊夜数": "nights",  // old
   "1日あたり客室費（予算）": "dailyRoomBudget",
   "1日あたり\n客室費（予算）": "dailyRoomBudget",
-  "一日あたり宿泊総額": "dailyRoomActual",
+  "一日あたり宿泊総額": "dailyRoomBudget",
   "1日あたり客室費（実績）": "dailyRoomActual",
   "1日あたり\n客室費（実績）": "dailyRoomActual",
   "客室総計（予算）": "roomBudgetTotal",
   "客室総計\n（予算）": "roomBudgetTotal",
   "客室確保費(予算)": "roomBudgetTotal",  // old
+  "客室確保費合計": "roomBudgetTotal",
   "客室総計（実績）": "roomActualTotal",
   "客室総計\n（実績）": "roomActualTotal",
   "客室確保費(実績)": "roomActualTotal",  // old
-  "客室確保費合計": "roomActualTotal",
+  "施設合計": "roomActualTotal",
   "ファンクション総計（予算）": "funcBudgetTotal",
   "ファンクション\n総計（予算）": "funcBudgetTotal",
   "会議室等確保費(予算)": "funcBudgetTotal",  // old
+  "会議室等確保費合計": "funcBudgetTotal",
   "会議室等確保費合計（実績）": "funcActualTotal",
-  "会議室等確保費合計": "funcActualTotal",
   "一日あたりファンクション総額": "dailyFuncActual",
   "1日あたりファンクション費（実績）": "dailyFuncActual",
   "1日あたり\nファンクション費（実績）": "dailyFuncActual",
@@ -496,16 +502,26 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
           }
         }
 
+        const rcActualT = rc.reduce((s, i) => s + i.actualAmount, 0);
+        const fcActualT = fc.reduce((s, i) => s + i.actualAmount, 0);
+        const otherActualT = h.costItems
+          .filter((i) => i.category !== "客室確保費" && i.category !== "会議室等確保費")
+          .reduce((s, i) => s + i.actualAmount, 0);
+        const roomForFacilityT = roomActualExcel ?? rcActualT;
+        const funcForFacilityT = funcActualExcel ?? fcActualT;
+        const hotelFacilityTotal = roomForFacilityT + funcForFacilityT + otherActualT;
+
         return {
           budget: acc.budget + rc.reduce((s, i) => s + i.budgetAmount, 0),
-          actual: acc.actual + (roomActualExcel ?? rc.reduce((s, i) => s + i.actualAmount, 0)),
-          funcActual: acc.funcActual + (funcActualExcel ?? fc.reduce((s, i) => s + i.actualAmount, 0)),
+          actual: acc.actual + (roomActualExcel ?? rcActualT),
+          funcActual: acc.funcActual + (funcActualExcel ?? fcActualT),
+          facilityTotal: acc.facilityTotal + hotelFacilityTotal,
           offeredRooms: acc.offeredRooms + (h.offeredRooms ?? 0),
           hasExcelRc: acc.hasExcelRc || roomActualExcel != null,
           hasExcelMr: acc.hasExcelMr || funcActualExcel != null,
         };
       },
-      { budget: 0, actual: 0, funcActual: 0, offeredRooms: 0, hasExcelRc: false, hasExcelMr: false }
+      { budget: 0, actual: 0, funcActual: 0, facilityTotal: 0, offeredRooms: 0, hasExcelRc: false, hasExcelMr: false }
     );
   }, [groupHotels, selectedGroup, roomChargeDb, meetingRoomDb]);
 
@@ -679,15 +695,26 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                     }
                   }
 
+                  const rcActual = rc.reduce((s, i) => s + i.actualAmount, 0);
+                  const fcActual = fc.reduce((s, i) => s + i.actualAmount, 0);
+                  const otherActual = h.costItems
+                    .filter((i) => i.category !== "客室確保費" && i.category !== "会議室等確保費")
+                    .reduce((s, i) => s + i.actualAmount, 0);
+                  const roomForFacility = roomActualExcel ?? rcActual;
+                  const funcForFacility = funcActualExcel ?? fcActual;
+                  const facilityTotalCalc = roomForFacility + funcForFacility + otherActual;
+                  const facilityTotal: number | null = facilityTotalCalc > 0 ? facilityTotalCalc : null;
+
                   const ex: Extra = {
                     nights: nightsBetween(h.contractStartDate, h.contractEndDate),
                     roomBudget: rc.reduce((s, i) => s + i.budgetAmount, 0),
-                    roomActual: rc.reduce((s, i) => s + i.actualAmount, 0),
+                    roomActual: rcActual,
                     funcBudget: fc.reduce((s, i) => s + i.budgetAmount, 0),
                     roomActualExcel,
                     funcActualExcel,
                     dailyRoomExcel,
                     dailyFuncExcel,
+                    facilityTotal,
                   };
                   return (
                     <tr key={h.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -709,8 +736,9 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                   {visibleCols.map((c) => {
                     let cell: React.ReactNode = null;
                     if (c.id === "offeredRooms") cell = totals.offeredRooms > 0 ? <span className="text-blue-600">{totals.offeredRooms.toLocaleString()} 室</span> : "—";
-                    if (c.id === "roomBudgetTotal") cell = yenOrDash(totals.budget);
-                    if (c.id === "roomActualTotal") cell = yenOrDash(totals.actual);
+                    if (c.id === "roomBudgetTotal") cell = yenOrDash(totals.actual);
+                    if (c.id === "funcBudgetTotal") cell = yenOrDash(totals.funcActual);
+                    if (c.id === "roomActualTotal") cell = yenOrDash(totals.facilityTotal);
                     if (c.id === "funcActualTotal") cell = yenOrDash(totals.funcActual);
                     return (
                       <td key={c.id} className={`py-3 px-3 whitespace-nowrap text-${c.align ?? "right"}`}>
