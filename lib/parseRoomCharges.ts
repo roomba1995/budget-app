@@ -21,6 +21,12 @@ export interface RoomRow {
   removePrice: number | null;
   roomNights: number;
   lodgingFee: number | null;
+  areaSqmMin: number | null;
+  areaSqmMax: number | null;
+  occupancy: number | null;
+  bedSizeW: number | null;
+  bedSizeH: number | null;
+  bedCount: number | null;
 }
 
 export interface RoomChargeSection {
@@ -172,6 +178,12 @@ function parseSection(
         removePrice,
         roomNights: toNum(colP) ?? 0,
         lodgingFee,
+        areaSqmMin: toNum(row[17]),
+        areaSqmMax: toNum(row[19]),
+        occupancy: toNum(row[20]),
+        bedSizeW: toNum(row[21]),
+        bedSizeH: toNum(row[23]),
+        bedCount: toNum(row[24]),
       });
       continue;
     }

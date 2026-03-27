@@ -43,6 +43,12 @@ interface RoomRow {
   removePrice: number | null;
   roomNights: number | null;
   lodgingFee: number | null;
+  areaSqmMin: number | null;
+  areaSqmMax: number | null;
+  occupancy: number | null;
+  bedSizeW: number | null;
+  bedSizeH: number | null;
+  bedCount: number | null;
 }
 
 interface RoomChargeSection {
@@ -171,6 +177,10 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">撤去期間客室単価/室</th>
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">ルームナイツ</th>
               <th className="text-right py-2 px-2 font-medium whitespace-nowrap">宿泊料金</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">広さ(㎡)</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">利用人数</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">ベッドサイズ(cm)</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">ベッド数(台)</th>
             </tr>
           </thead>
           <tbody>
@@ -192,6 +202,10 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.removePrice != null ? r.removePrice.toLocaleString("ja-JP") : "—"}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.roomNights)}</td>
                 <td className="py-2 px-2 text-right tabular-nums font-semibold text-gray-800">{r.lodgingFee != null ? r.lodgingFee.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.areaSqmMin != null ? (r.areaSqmMax != null && r.areaSqmMax !== r.areaSqmMin ? `${r.areaSqmMin}〜${r.areaSqmMax}` : String(r.areaSqmMin)) : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.occupancy)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.bedSizeW != null && r.bedSizeH != null ? `${r.bedSizeW}×${r.bedSizeH}` : r.bedSizeW != null ? String(r.bedSizeW) : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.bedCount)}</td>
               </tr>
             ))}
           </tbody>
@@ -205,6 +219,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
               <td className="py-2 px-2" />
               <td className="py-2 px-2 text-right tabular-nums text-gray-700">{fmtInt(section.roomNights)}</td>
               <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.totalCostTax ?? section.totalCost)}</td>
+              <td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" /><td className="py-2 px-2" />
             </tr>
           </tfoot>
         </table>
