@@ -475,8 +475,8 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
     const isPara = selectedGroup.startsWith("パラ");
     return groupHotels.reduce(
       (acc, h) => {
-        const rc = h.costItems.filter((i) => i.category === "客室確保費");
-        const fc = h.costItems.filter((i) => i.category === "会議室等確保費");
+        const rc = (h.costItems ?? []).filter((i) => i.category === "客室確保費");
+        const fc = (h.costItems ?? []).filter((i) => i.category === "会議室等確保費");
         const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
         const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
         const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
@@ -660,8 +660,8 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
               </thead>
               <tbody>
                 {groupHotels.map((h) => {
-                  const rc = h.costItems.filter((i) => i.category === "客室確保費");
-                  const fc = h.costItems.filter((i) => i.category === "会議室等確保費");
+                  const rc = (h.costItems ?? []).filter((i) => i.category === "客室確保費");
+                  const fc = (h.costItems ?? []).filter((i) => i.category === "会議室等確保費");
                   const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
                   const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
                   const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;

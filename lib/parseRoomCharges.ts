@@ -242,10 +242,10 @@ function parseSection(
         rowText.includes("税込") ||
         rowText.includes("税サ込") ||
         rowText.includes("サ込税");
-      if (isTax) {
-        totalCostTax = val;
-      } else {
-        totalCost = val;
+      // Only overwrite if we found an actual value — empty/duplicate rows must not clear prior values
+      if (val != null) {
+        if (isTax) { totalCostTax = val; }
+        else { totalCost = val; }
       }
       continue;
     }
