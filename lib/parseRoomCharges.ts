@@ -196,8 +196,9 @@ function parseSection(
       continue;
     }
 
-    // ── 合計 row ──────────────────────────────────────────────────────────────
-    if (strA.includes("合計") || strI.includes("合計")) {
+    // ── 合計 row (room-count summary — must be exact "合計" to avoid matching
+    //    label rows like "客室確保費合計" that should fall through to cost parsing) ──
+    if (strA === "合計" || strI === "合計") {
       sumTotalRooms = toNum(colJ) ?? sumTotalRooms;
       sumOfferedRooms = toNum(colK) ?? sumOfferedRooms;
       sumRoomNights = toNum(colP) ?? sumRoomNights;
@@ -253,6 +254,8 @@ function parseSection(
   if (rooms.length === 0 && dailyCost === null) return null;
 
   const computedDailyCost = rooms.reduce((s, r) => s + r.dailyAmount, 0);
+  // Fallback: compute pre-tax total from room lodging fees when the 総宿泊料金 row was not found
+  const computedTotalCost = rooms.reduce((s, r) => s + (r.lodgingFee ?? 0), 0);
 
   return {
     rooms,
@@ -262,7 +265,7 @@ function parseSection(
     roomNights: sumRoomNights || rooms.reduce((s, r) => s + r.roomNights, 0),
     dailyCost: dailyCost ?? (computedDailyCost > 0 ? computedDailyCost : null),
     dailyCostTax,
-    totalCost,
+    totalCost: totalCost ?? (totalCostTax == null && computedTotalCost > 0 ? computedTotalCost : null),
     totalCostTax,
   };
 }
