@@ -80,6 +80,45 @@ const ROOM_CHARGES_STORAGE_KEY = "room-charges-v2-uploaded";
 type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
 
 // ─────────────────────────────────────────────
+// Meeting room types (別紙1-2)
+// ─────────────────────────────────────────────
+
+interface MeetingRoomRow {
+  no: number;
+  startDate: string | null;
+  endDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  usageDays: number | null;
+  venueName: string;
+  floor: string | null;
+  venueType: string | null;
+  lengthM: number | null;
+  widthM: number | null;
+  areaSqm: number | null;
+  ceilingHeightM: number | null;
+  pricePerDay: number | null;
+  totalPrice: number | null;
+  splitAvailable: string | null;
+  splitCount: number | null;
+  lanWired: string | null;
+  lanWiredPrice: number | null;
+  lanWireless: string | null;
+}
+
+interface MeetingRoomSection {
+  rooms: MeetingRoomRow[];
+  totalDays: number | null;
+  dailyCost: number | null;
+  dailyCostTax: number | null;
+  totalCost: number | null;
+  totalCostTax: number | null;
+}
+
+const MEETING_ROOMS_STORAGE_KEY = "meeting-rooms-v1-uploaded";
+type MeetingRoomsDB = Record<string, { hotelName: string; asia: MeetingRoomSection; para: MeetingRoomSection | null }>;
+
+// ─────────────────────────────────────────────
 // Room charge table components (no hooks — safe to use anywhere)
 // ─────────────────────────────────────────────
 
@@ -202,6 +241,138 @@ function RoomChargeInTab({ chargeData }: { chargeData: RoomChargesDB[string] | n
       <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-1より）</p>
       {hasAsia && <RoomChargeSectionTable label="◆ アジア競技大会" section={chargeData.asia} />}
       {hasPara && <RoomChargeSectionTable label="◆ アジアパラ競技大会" section={chargeData.para!} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Meeting room table (別紙1-2)
+// ─────────────────────────────────────────────
+
+function MeetingRoomSectionTable({ label, section }: { label: string; section: MeetingRoomSection }) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const top = topRef.current;
+    const bottom = bottomRef.current;
+    if (!top || !bottom) return;
+    if (spacerRef.current) spacerRef.current.style.width = bottom.scrollWidth + "px";
+    const onTop = () => { bottom.scrollLeft = top.scrollLeft; };
+    const onBottom = () => {
+      top.scrollLeft = bottom.scrollLeft;
+      if (spacerRef.current) spacerRef.current.style.width = bottom.scrollWidth + "px";
+    };
+    top.addEventListener("scroll", onTop);
+    bottom.addEventListener("scroll", onBottom);
+    return () => { top.removeEventListener("scroll", onTop); bottom.removeEventListener("scroll", onBottom); };
+  }, [section]);
+
+  if (!section.rooms || section.rooms.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
+      {/* Top scrollbar mirror */}
+      <div ref={topRef} className="overflow-x-scroll" style={{ height: 16, overflowY: "hidden" }}>
+        <div ref={spacerRef} style={{ height: 1 }} />
+      </div>
+      <div ref={bottomRef} className="overflow-x-auto">
+        <table className="w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
+          <thead>
+            <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">No.</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">利用開始日</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">利用終了日</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">利用開始時間</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">利用終了時間</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">利用日数</th>
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">会場名</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">階数</th>
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">会場形態</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">たて(m)</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">よこ(m)</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">広さ(㎡)</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">天井高(m)</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">料金<br/><span className="font-normal">※サ込税別</span></th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">料金計<br/><span className="font-normal">※サ込税別</span></th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">分割<br/>可否</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">分割<br/>数</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">有線<br/>LAN</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">有線LAN<br/>料金</th>
+              <th className="text-center py-2 px-2 font-medium whitespace-nowrap">無線<br/>LAN</th>
+            </tr>
+          </thead>
+          <tbody>
+            {section.rooms.map((r) => (
+              <tr key={r.no} className="border-b border-gray-50 hover:bg-blue-50/20">
+                <td className="py-2 px-2 text-center text-gray-400">{r.no}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-500">{fmtDate(r.startDate)}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-500">{fmtDate(r.endDate)}</td>
+                <td className="py-2 px-2 text-center text-gray-500">{r.startTime ?? "—"}</td>
+                <td className="py-2 px-2 text-center text-gray-500">{r.endTime ?? "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.usageDays)}</td>
+                <td className="py-2 px-2 text-gray-700 font-medium">{r.venueName}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.floor ?? "—"}</td>
+                <td className="py-2 px-2 text-gray-600">{r.venueType ?? "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.lengthM != null ? r.lengthM : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.widthM != null ? r.widthM : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.areaSqm != null ? r.areaSqm : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.ceilingHeightM != null ? r.ceilingHeightM : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.pricePerDay != null ? Math.round(r.pricePerDay).toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums font-semibold text-gray-800">{r.totalPrice != null ? Math.round(r.totalPrice).toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.splitAvailable ?? "—"}</td>
+                <td className="py-2 px-2 text-center tabular-nums text-gray-600">{r.splitCount != null ? r.splitCount : "—"}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.lanWired ?? "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.lanWiredPrice != null ? r.lanWiredPrice.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-center text-gray-600">{r.lanWireless ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold text-sm">
+              <td colSpan={5} className="py-2 px-2 text-gray-600">合計</td>
+              <td className="py-2 px-2 text-right tabular-nums text-gray-700">{fmtInt(section.totalDays)}</td>
+              <td colSpan={8} className="py-2 px-2" />
+              <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.dailyCost)}</td>
+              <td className="py-2 px-2 text-right tabular-nums text-blue-700">{fmtNum(section.totalCostTax ?? section.totalCost)}</td>
+              <td colSpan={5} className="py-2 px-2" />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-center">
+          <div className="text-blue-500 mb-0.5">1日あたり会場費</div>
+          <div className="font-bold text-blue-800 tabular-nums">{fmtNum(section.dailyCost)}</div>
+        </div>
+        <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 text-center">
+          <div className="text-gray-500 mb-0.5">1日あたり（税込）</div>
+          <div className="font-bold text-gray-800 tabular-nums">{fmtNum(section.dailyCostTax)}</div>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 text-center">
+          <div className="text-green-600 mb-0.5">会場合計（税別）</div>
+          <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCost)}</div>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 text-center">
+          <div className="text-green-600 mb-0.5">会場合計（税サ込）</div>
+          <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MeetingRoomInTab({ meetingData }: { meetingData: MeetingRoomsDB[string] | null }) {
+  if (!meetingData) return null;
+  const hasAsia = (meetingData.asia?.rooms?.length ?? 0) > 0;
+  const hasPara = meetingData.para != null && (meetingData.para.rooms?.length ?? 0) > 0;
+  if (!hasAsia && !hasPara) return null;
+  return (
+    <div className="mb-5 pb-5 border-b border-gray-100">
+      <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-2より）</p>
+      {hasAsia && <MeetingRoomSectionTable label="◆ アジア競技大会" section={meetingData.asia} />}
+      {hasPara && <MeetingRoomSectionTable label="◆ アジアパラ競技大会" section={meetingData.para!} />}
     </div>
   );
 }
@@ -591,6 +762,28 @@ function HotelDetailInner() {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
+  // ── Meeting room DB (from uploaded Excel or static JSON) ──────────────────
+  const [meetingRoomDb, setMeetingRoomDb] = useState<MeetingRoomsDB | null>(null);
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(MEETING_ROOMS_STORAGE_KEY);
+      if (s) { setMeetingRoomDb(JSON.parse(s) as MeetingRoomsDB); return; }
+    } catch { /* ignore */ }
+    fetch("/budget-app/meeting-rooms.json")
+      .then((r) => r.json())
+      .then((data) => setMeetingRoomDb(data as MeetingRoomsDB))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === MEETING_ROOMS_STORAGE_KEY && e.newValue) {
+        try { setMeetingRoomDb(JSON.parse(e.newValue) as MeetingRoomsDB); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
   const [hotelDropdownOpen, setHotelDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -626,6 +819,12 @@ function HotelDetailInner() {
     const key = String(parseInt(hotel.facilityNo, 10));
     return roomChargeDb[key] ?? null;
   }, [hotel, roomChargeDb]);
+
+  const meetingRoomData = useMemo(() => {
+    if (!hotel?.facilityNo || !meetingRoomDb) return null;
+    const key = String(parseInt(hotel.facilityNo, 10));
+    return meetingRoomDb[key] ?? null;
+  }, [hotel, meetingRoomDb]);
 
   const [activeCategory, setActiveCategory] = useState<CostCategory | "all">(
     "all"
@@ -686,9 +885,27 @@ function HotelDetailInner() {
     };
   }
 
-  const adjustedActual = roomChargeActual != null
-    ? totals.actual - (hotel.costItems.filter(i => i.category === "客室確保費").reduce((s, i) => s + i.actualAmount, 0)) + roomChargeActual
-    : totals.actual;
+  // 会議室等確保費の実績はExcel取込データ（会場合計税サ込）を優先する
+  const meetingRoomActual: number | null = (() => {
+    if (!meetingRoomData) return null;
+    const asiaTax = meetingRoomData.asia?.totalCostTax ?? meetingRoomData.asia?.totalCost ?? null;
+    const paraTax = meetingRoomData.para?.totalCostTax ?? meetingRoomData.para?.totalCost ?? null;
+    if (asiaTax == null && paraTax == null) return null;
+    return (asiaTax ?? 0) + (paraTax ?? 0);
+  })();
+
+  if (meetingRoomActual != null) {
+    categoryStats["会議室等確保費"] = {
+      ...categoryStats["会議室等確保費"],
+      actual: meetingRoomActual,
+    };
+  }
+
+  const kyashituItems = hotel.costItems.filter(i => i.category === "客室確保費").reduce((s, i) => s + i.actualAmount, 0);
+  const kaigishitsuItems = hotel.costItems.filter(i => i.category === "会議室等確保費").reduce((s, i) => s + i.actualAmount, 0);
+  const adjustedActual = totals.actual
+    + (roomChargeActual != null ? roomChargeActual - kyashituItems : 0)
+    + (meetingRoomActual != null ? meetingRoomActual - kaigishitsuItems : 0);
   const adjustedTotals = { ...totals, actual: adjustedActual };
 
   const variance = calcVariance(adjustedTotals.budget, adjustedTotals.actual);
@@ -1039,12 +1256,18 @@ function HotelDetailInner() {
                 {activeCategory === "客室確保費" && (
                   <RoomChargeInTab chargeData={roomChargeData} />
                 )}
+                {activeCategory === "会議室等確保費" && (
+                  <MeetingRoomInTab meetingData={meetingRoomData} />
+                )}
                 <SingleCategoryView
                   stats={categoryStats[activeCategory]}
                   onAdd={() => handleOpenAddModal(activeCategory)}
                   onEdit={handleOpenEditModal}
                   onDelete={handleDelete}
-                  showAdd={!(activeCategory === "客室確保費" && roomChargeActual != null)}
+                  showAdd={
+                    !(activeCategory === "客室確保費" && roomChargeActual != null) &&
+                    !(activeCategory === "会議室等確保費" && meetingRoomActual != null)
+                  }
                 />
               </>
             )}

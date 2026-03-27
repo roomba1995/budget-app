@@ -118,12 +118,24 @@ export default function AdminPage() {
     setRcParsing(true);
     setRcMsg(null);
     try {
-      const { parseRoomChargesFromFile, ROOM_CHARGES_STORAGE_KEY } = await import("@/lib/parseRoomCharges");
-      const { db, count, errors } = await parseRoomChargesFromFile(file);
-      localStorage.setItem(ROOM_CHARGES_STORAGE_KEY, JSON.stringify(db));
-      window.dispatchEvent(new StorageEvent("storage", { key: ROOM_CHARGES_STORAGE_KEY, newValue: JSON.stringify(db) }));
-      setRcCount(count);
-      setRcMsg(`✓ ${count}施設の客室料金データを保存しました。${errors.length > 0 ? `（エラー${errors.length}件）` : ""}`);
+      const [
+        { parseRoomChargesFromFile, ROOM_CHARGES_STORAGE_KEY },
+        { parseMeetingRoomsFromFile, MEETING_ROOMS_STORAGE_KEY },
+      ] = await Promise.all([
+        import("@/lib/parseRoomCharges"),
+        import("@/lib/parseMeetingRooms"),
+      ]);
+      const [rcResult, mrResult] = await Promise.all([
+        parseRoomChargesFromFile(file),
+        parseMeetingRoomsFromFile(file),
+      ]);
+      localStorage.setItem(ROOM_CHARGES_STORAGE_KEY, JSON.stringify(rcResult.db));
+      localStorage.setItem(MEETING_ROOMS_STORAGE_KEY, JSON.stringify(mrResult.db));
+      window.dispatchEvent(new StorageEvent("storage", { key: ROOM_CHARGES_STORAGE_KEY, newValue: JSON.stringify(rcResult.db) }));
+      window.dispatchEvent(new StorageEvent("storage", { key: MEETING_ROOMS_STORAGE_KEY, newValue: JSON.stringify(mrResult.db) }));
+      setRcCount(rcResult.count);
+      const errs = rcResult.errors.length + mrResult.errors.length;
+      setRcMsg(`✓ 別紙1-1: ${rcResult.count}施設、別紙1-2: ${mrResult.count}施設のデータを保存しました。${errs > 0 ? `（エラー${errs}件）` : ""}`);
     } catch (err) {
       setRcMsg(`⚠ エラー: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
