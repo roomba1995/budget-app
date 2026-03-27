@@ -112,6 +112,18 @@ export default function AdminPage() {
   });
   const rcFileRef = useRef<HTMLInputElement>(null);
 
+  // ── Meal-costs Excel upload ────────────────────────────────────────────────
+  const [mcMsg, setMcMsg] = useState<string | null>(null);
+  const [mcParsing, setMcParsing] = useState(false);
+  const [mcCount, setMcCount] = useState<number>(() => {
+    try {
+      const s = localStorage.getItem("meal-costs-v1-uploaded");
+      if (s) return Object.keys(JSON.parse(s)).length;
+    } catch { /* ignore */ }
+    return 0;
+  });
+  const mcFileRef = useRef<HTMLInputElement>(null);
+
   const handleRcUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -140,6 +152,26 @@ export default function AdminPage() {
       setRcMsg(`⚠ エラー: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setRcParsing(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleMcUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMcParsing(true);
+    setMcMsg(null);
+    try {
+      const { parseMealCostsFromFile, MEAL_COSTS_STORAGE_KEY } = await import("@/lib/parseMealCosts");
+      const result = await parseMealCostsFromFile(file);
+      localStorage.setItem(MEAL_COSTS_STORAGE_KEY, JSON.stringify(result.db));
+      window.dispatchEvent(new StorageEvent("storage", { key: MEAL_COSTS_STORAGE_KEY, newValue: JSON.stringify(result.db) }));
+      setMcCount(result.count);
+      setMcMsg(`✓ 別紙2: ${result.count}施設のデータを保存しました。${result.errors.length > 0 ? `（エラー${result.errors.length}件）` : ""}`);
+    } catch (err) {
+      setMcMsg(`⚠ エラー: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setMcParsing(false);
       e.target.value = "";
     }
   };
@@ -385,6 +417,47 @@ export default function AdminPage() {
           <div className="px-5 pb-4">
             <p className="text-xs text-gray-400">
               アップロードしたデータはブラウザのローカルストレージに保存されます。各ホテルの詳細ページで客室料金積算として表示されます。
+            </p>
+          </div>
+        </div>
+
+        {/* 飲食費データ ── Excelアップロード */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-base font-semibold text-gray-800">飲食費データ — Excelアップロード（一括）</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              複数施設の別紙2シートを含むExcelファイルをアップロードすると、飲食費データを一括取得します。個別ファイルはホテル詳細画面からアップロードできます。
+            </p>
+          </div>
+          <div className="px-5 py-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => mcFileRef.current?.click()}
+              disabled={mcParsing}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-60 disabled:cursor-wait transition-colors"
+            >
+              {mcParsing ? "解析中..." : "↑ Excelアップロード (.xlsm / .xlsx)"}
+            </button>
+            <input
+              ref={mcFileRef}
+              type="file"
+              accept=".xlsm,.xlsx,.xls"
+              className="hidden"
+              onChange={handleMcUpload}
+            />
+            {mcCount > 0 && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                現在: {mcCount}施設分のデータ保存済み
+              </span>
+            )}
+            {mcMsg && (
+              <span className={`text-xs ${mcMsg.startsWith("⚠") ? "text-red-500" : "text-green-600"}`}>
+                {mcMsg}
+              </span>
+            )}
+          </div>
+          <div className="px-5 pb-4">
+            <p className="text-xs text-gray-400">
+              アップロードしたデータはブラウザのローカルストレージに保存されます。各ホテルの詳細ページ「飲食費」タブで表示されます。
             </p>
           </div>
         </div>

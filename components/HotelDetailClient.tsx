@@ -88,7 +88,7 @@ function fmtDate(v: string | null | undefined): string {
 }
 
 const ROOM_CHARGES_STORAGE_KEY = "room-charges-v2-uploaded";
-type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection; para: RoomChargeSection | null }>;
+type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection | null; para: RoomChargeSection | null }>;
 
 // ─────────────────────────────────────────────
 // Meeting room types (別紙1-2)
@@ -129,7 +129,35 @@ interface MeetingRoomSection {
 }
 
 const MEETING_ROOMS_STORAGE_KEY = "meeting-rooms-v1-uploaded";
-type MeetingRoomsDB = Record<string, { hotelName: string; asia: MeetingRoomSection; para: MeetingRoomSection | null }>;
+type MeetingRoomsDB = Record<string, { hotelName: string; asia: MeetingRoomSection | null; para: MeetingRoomSection | null }>;
+
+// ─────────────────────────────────────────────
+// Meal cost types (別紙2)
+// ─────────────────────────────────────────────
+
+interface MealRow {
+  category: string;
+  mealType: string;
+  unitPriceBasic: number | null;
+  unitPriceHalal: number | null;
+  totalMeals: number | null;
+  totalAmount: number | null;
+}
+
+interface MealCostSection {
+  rows: MealRow[];
+  totalTaxExcluded: number | null;
+  totalTaxIncluded: number | null;
+}
+
+interface MealCostEntry {
+  hotelName: string;
+  asia: MealCostSection | null;
+  para: MealCostSection | null;
+}
+
+const MEAL_COSTS_STORAGE_KEY = "meal-costs-v1-uploaded";
+type MealCostsDB = Record<string, MealCostEntry>;
 
 // ─────────────────────────────────────────────
 // Room charge table components (no hooks — safe to use anywhere)
@@ -409,6 +437,113 @@ function MeetingRoomInTab({ meetingData }: { meetingData: MeetingRoomsDB[string]
       <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-2より）</p>
       {hasAsia && <MeetingRoomSectionTable label="◆ アジア競技大会" section={meetingData.asia!} />}
       {hasPara && <MeetingRoomSectionTable label="◆ アジアパラ競技大会" section={meetingData.para!} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Meal cost table (別紙2)
+// ─────────────────────────────────────────────
+
+function MealCostSectionTable({ label, section }: { label: string; section: MealCostSection }) {
+  if (!section.rows || section.rows.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <div className="text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
+          <thead>
+            <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">食事カテゴリー</th>
+              <th className="text-left py-2 px-2 font-medium whitespace-nowrap">食事種類</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">Basic単価</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">Halal/vegan単価</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">合計食数</th>
+              <th className="text-right py-2 px-2 font-medium whitespace-nowrap">料金</th>
+            </tr>
+          </thead>
+          <tbody>
+            {section.rows.map((r, i) => (
+              <tr key={i} className="border-b border-gray-50 hover:bg-orange-50/20">
+                <td className="py-2 px-2 text-gray-700 font-medium">{r.category}</td>
+                <td className="py-2 px-2 text-gray-600">{r.mealType}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.unitPriceBasic != null ? r.unitPriceBasic.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{r.unitPriceHalal != null ? r.unitPriceHalal.toLocaleString("ja-JP") : "—"}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-gray-600">{fmtInt(r.totalMeals)}</td>
+                <td className="py-2 px-2 text-right tabular-nums font-semibold text-gray-800">{r.totalAmount != null ? r.totalAmount.toLocaleString("ja-JP") : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2 text-xs max-w-xs">
+        <div className="bg-orange-50 border border-orange-100 rounded-lg p-2.5 text-center">
+          <div className="text-orange-500 mb-0.5">合計（税別）</div>
+          <div className="font-bold text-orange-800 tabular-nums">{fmtNum(section.totalTaxExcluded)}</div>
+        </div>
+        <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-center">
+          <div className="text-amber-600 mb-0.5">合計（税込）</div>
+          <div className="font-bold text-amber-800 tabular-nums">{fmtNum(section.totalTaxIncluded)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MealCostInTab({ mealData }: { mealData: MealCostEntry | null }) {
+  if (!mealData) return null;
+  const hasAsia = mealData.asia != null && (mealData.asia.rows?.length ?? 0) > 0;
+  const hasPara = mealData.para != null && (mealData.para.rows?.length ?? 0) > 0;
+  if (!hasAsia && !hasPara) return null;
+  return (
+    <div className="mb-5 pb-5 border-b border-gray-100">
+      <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙2より）</p>
+      {hasAsia && <MealCostSectionTable label="◆ アジア競技大会" section={mealData.asia!} />}
+      {hasPara && <MealCostSectionTable label="◆ アジアパラ競技大会" section={mealData.para!} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Per-hotel upload button
+// ─────────────────────────────────────────────
+
+function UploadButton({
+  label,
+  onFile,
+  uploading,
+  uploadError,
+  uploadSuccess,
+}: {
+  label: string;
+  onFile: (file: File) => void;
+  uploading: boolean;
+  uploadError: string | null;
+  uploadSuccess: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex items-center gap-2 flex-wrap mb-4">
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xlsx,.xlsm,.xls"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
+          e.target.value = "";
+        }}
+      />
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+      >
+        {uploading ? "処理中..." : `↑ ${label}`}
+      </button>
+      {uploadSuccess && <span className="text-xs text-emerald-600">取込済</span>}
+      {uploadError && <span className="text-xs text-red-500">{uploadError}</span>}
     </div>
   );
 }
@@ -820,6 +955,37 @@ function HotelDetailInner() {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
+  // ── Meal cost DB (bulk, no static JSON fallback) ───────────────────────────
+  const [mealCostDb, setMealCostDb] = useState<MealCostsDB | null>(null);
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(MEAL_COSTS_STORAGE_KEY);
+      if (s) setMealCostDb(JSON.parse(s) as MealCostsDB);
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === MEAL_COSTS_STORAGE_KEY && e.newValue) {
+        try { setMealCostDb(JSON.parse(e.newValue) as MealCostsDB); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  // ── Per-hotel entries (override bulk DB) ──────────────────────────────────
+  const [perHotelRcEntry, setPerHotelRcEntry] = useState<RoomChargesDB[string] | null>(null);
+  const [perHotelMrEntry, setPerHotelMrEntry] = useState<MeetingRoomsDB[string] | null>(null);
+  const [perHotelMcEntry, setPerHotelMcEntry] = useState<MealCostEntry | null>(null);
+
+  // ── Per-hotel upload state ────────────────────────────────────────────────
+  const [rcUploading, setRcUploading] = useState(false);
+  const [rcUploadError, setRcUploadError] = useState<string | null>(null);
+  const [mrUploading, setMrUploading] = useState(false);
+  const [mrUploadError, setMrUploadError] = useState<string | null>(null);
+  const [mcUploading, setMcUploading] = useState(false);
+  const [mcUploadError, setMcUploadError] = useState<string | null>(null);
+
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
   const [hotelDropdownOpen, setHotelDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -850,17 +1016,47 @@ function HotelDetailInner() {
     [hotels, id]
   );
 
+  // Load per-hotel entries from localStorage once hotel is known
+  useEffect(() => {
+    const facilityNo = hotel?.facilityNo ? String(parseInt(hotel.facilityNo, 10)) : null;
+    if (!facilityNo) return;
+    try {
+      const rc = localStorage.getItem(`room-charges-hotel-${facilityNo}`);
+      if (rc) setPerHotelRcEntry(JSON.parse(rc));
+    } catch { /* ignore */ }
+    try {
+      const mr = localStorage.getItem(`meeting-rooms-hotel-${facilityNo}`);
+      if (mr) setPerHotelMrEntry(JSON.parse(mr));
+    } catch { /* ignore */ }
+    try {
+      const mc = localStorage.getItem(`meal-costs-hotel-${facilityNo}`);
+      if (mc) setPerHotelMcEntry(JSON.parse(mc));
+    } catch { /* ignore */ }
+  }, [hotel?.facilityNo]);
+
   const roomChargeData = useMemo(() => {
-    if (!hotel?.facilityNo || !roomChargeDb) return null;
+    if (!hotel?.facilityNo) return null;
+    if (perHotelRcEntry) return perHotelRcEntry;
+    if (!roomChargeDb) return null;
     const key = String(parseInt(hotel.facilityNo, 10));
     return roomChargeDb[key] ?? null;
-  }, [hotel, roomChargeDb]);
+  }, [hotel, roomChargeDb, perHotelRcEntry]);
 
   const meetingRoomData = useMemo(() => {
-    if (!hotel?.facilityNo || !meetingRoomDb) return null;
+    if (!hotel?.facilityNo) return null;
+    if (perHotelMrEntry) return perHotelMrEntry;
+    if (!meetingRoomDb) return null;
     const key = String(parseInt(hotel.facilityNo, 10));
     return meetingRoomDb[key] ?? null;
-  }, [hotel, meetingRoomDb]);
+  }, [hotel, meetingRoomDb, perHotelMrEntry]);
+
+  const mealCostData = useMemo(() => {
+    if (!hotel?.facilityNo) return null;
+    if (perHotelMcEntry) return perHotelMcEntry;
+    if (!mealCostDb) return null;
+    const key = String(parseInt(hotel.facilityNo, 10));
+    return mealCostDb[key] ?? null;
+  }, [hotel, mealCostDb, perHotelMcEntry]);
 
   const [activeCategory, setActiveCategory] = useState<CostCategory | "all">(
     "all"
@@ -953,6 +1149,59 @@ function HotelDetailInner() {
     adjustedTotals.actual > 0
       ? Math.min(100, Math.round((executedTotal / adjustedTotals.actual) * 100))
       : 0;
+
+  const facilityNoKey = hotel?.facilityNo ? String(parseInt(hotel.facilityNo, 10)) : null;
+
+  const handleRcUpload = async (file: File) => {
+    if (!facilityNoKey) return;
+    setRcUploading(true);
+    setRcUploadError(null);
+    try {
+      const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
+      const result = await parseRoomChargesFromPerHotelFile(file);
+      if ("error" in result) { setRcUploadError(result.error); return; }
+      localStorage.setItem(`room-charges-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
+      setPerHotelRcEntry(result.entry);
+    } catch (e) {
+      setRcUploadError(e instanceof Error ? e.message : "エラー");
+    } finally {
+      setRcUploading(false);
+    }
+  };
+
+  const handleMrUpload = async (file: File) => {
+    if (!facilityNoKey) return;
+    setMrUploading(true);
+    setMrUploadError(null);
+    try {
+      const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
+      const result = await parseMeetingRoomsFromPerHotelFile(file);
+      if ("error" in result) { setMrUploadError(result.error); return; }
+      localStorage.setItem(`meeting-rooms-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
+      setPerHotelMrEntry(result.entry);
+    } catch (e) {
+      setMrUploadError(e instanceof Error ? e.message : "エラー");
+    } finally {
+      setMrUploading(false);
+    }
+  };
+
+  const handleMcUpload = async (file: File) => {
+    if (!facilityNoKey) return;
+    setMcUploading(true);
+    setMcUploadError(null);
+    try {
+      const { parseMealCostsFromPerHotelFile } = await import("@/lib/parseMealCosts");
+      const result = await parseMealCostsFromPerHotelFile(file);
+      if ("error" in result) { setMcUploadError(result.error); return; }
+      localStorage.setItem(`meal-costs-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
+      setPerHotelMcEntry(result.entry);
+    } catch (e) {
+      setMcUploadError(e instanceof Error ? e.message : "エラー");
+    } finally {
+      setMcUploading(false);
+    }
+  };
 
   const handleOpenAddModal = (cat?: CostCategory) => {
     setEditingItem(null);
@@ -1290,10 +1539,40 @@ function HotelDetailInner() {
             ) : (
               <>
                 {activeCategory === "客室確保費" && (
-                  <RoomChargeInTab chargeData={roomChargeData} />
+                  <>
+                    <UploadButton
+                      label="別紙1-1 Excelアップロード"
+                      onFile={handleRcUpload}
+                      uploading={rcUploading}
+                      uploadError={rcUploadError}
+                      uploadSuccess={perHotelRcEntry != null}
+                    />
+                    <RoomChargeInTab chargeData={roomChargeData} />
+                  </>
                 )}
                 {activeCategory === "会議室等確保費" && (
-                  <MeetingRoomInTab meetingData={meetingRoomData} />
+                  <>
+                    <UploadButton
+                      label="別紙1-2 Excelアップロード"
+                      onFile={handleMrUpload}
+                      uploading={mrUploading}
+                      uploadError={mrUploadError}
+                      uploadSuccess={perHotelMrEntry != null}
+                    />
+                    <MeetingRoomInTab meetingData={meetingRoomData} />
+                  </>
+                )}
+                {activeCategory === "飲食費" && (
+                  <>
+                    <UploadButton
+                      label="別紙2 Excelアップロード"
+                      onFile={handleMcUpload}
+                      uploading={mcUploading}
+                      uploadError={mcUploadError}
+                      uploadSuccess={perHotelMcEntry != null}
+                    />
+                    <MealCostInTab mealData={mealCostData} />
+                  </>
                 )}
                 <SingleCategoryView
                   stats={categoryStats[activeCategory]}

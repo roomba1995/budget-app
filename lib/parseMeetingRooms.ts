@@ -207,6 +207,48 @@ function parseSection(rows: unknown[][], startRow: number, endRow: number): Meet
   return { rooms, totalDays, dailyCost, dailyCostTax, totalCost, totalCostTax };
 }
 
+// ── Per-hotel parse helper ────────────────────────────────────────────────────
+
+/**
+ * Parse a per-hotel file that contains a single 別紙1-2 sheet.
+ * Returns the facilityNo and entry, or an error string.
+ */
+export async function parseMeetingRoomsFromPerHotelFile(
+  file: File
+): Promise<{ facilityNo: string; entry: MeetingRoomEntry } | { error: string }> {
+  const XLSX = await import("xlsx");
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+
+  const sheetName = workbook.SheetNames.find((n) => n.includes("別紙1-2"));
+  if (!sheetName) return { error: "別紙1-2シートが見つかりません" };
+
+  const match = sheetName.match(/^0*(\d+)[_　\s]/);
+  if (!match) return { error: `"${sheetName}": 施設番号を抽出できません` };
+  const facilityNo = match[1];
+
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    raw: true,
+    defval: null,
+  }) as unknown[][];
+
+  const row1 = rows[1] ?? [];
+  const hotelName = cellStr(row1[2]) || cellStr(row1[0]) || "";
+
+  const { asiaStart, paraStart } = findSectionStarts(rows);
+  if (asiaStart < 0 && paraStart < 0) return { error: "セクションが見つかりません" };
+
+  const asiaEnd = paraStart >= 0 ? paraStart : rows.length;
+  const asia = asiaStart >= 0 ? parseSection(rows, asiaStart + 1, asiaEnd) : null;
+  const para = paraStart >= 0 ? parseSection(rows, paraStart + 1, rows.length) : null;
+
+  if (!asia && !para) return { error: "データが見つかりません" };
+
+  return { facilityNo, entry: { hotelName, asia, para } };
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function parseMeetingRoomsFromFile(
