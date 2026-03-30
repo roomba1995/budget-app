@@ -5,11 +5,13 @@ import Link from "next/link";
 import { Hotel, Group, GROUPS, GROUP_COLORS, formatCurrency } from "@/types";
 import type { RoomChargesDB } from "@/lib/parseRoomCharges";
 import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
+import type { AllocationDB } from "@/lib/parseBudgetAllocation";
 
 interface Props {
   hotels: Hotel[];
   roomChargeDb?: RoomChargesDB | null;
   meetingRoomDb?: MeetingRoomsDB | null;
+  allocationDb?: AllocationDB | null;
 }
 
 // ─────────────────────────────────────────────
@@ -388,7 +390,7 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
 }
 
 // ─────────────────────────────────────────────
-export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomDb }: Props) {
+export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomDb, allocationDb }: Props) {
   const [selectedGroup, setSelectedGroup] = useState<Group>(GROUPS[0]);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => loadHidden());
   const [colPanelOpen, setColPanelOpen] = useState(false);
@@ -478,33 +480,46 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
         const rc = (h.costItems ?? []).filter((i) => i.category === "客室確保費");
         const fc = (h.costItems ?? []).filter((i) => i.category === "会議室等確保費");
         const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
+        const allocEntry = facilityNoKey ? allocationDb?.[facilityNoKey] : null;
         const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
         const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
 
+        // allocationDb (積算シート) takes priority over 別紙1-1/1-2
         let roomActualExcel: number | null = null;
-        if (rcEntry) {
-          if (isAsia) roomActualExcel = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? null;
-          else if (isPara) roomActualExcel = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? null;
-          else {
-            const a = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? 0;
-            const p = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? 0;
-            roomActualExcel = (a + p) || null;
-          }
-        }
         let funcActualExcel: number | null = null;
-        if (mrEntry) {
-          if (isAsia) funcActualExcel = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? null;
-          else if (isPara) funcActualExcel = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? null;
-          else {
-            const a = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? 0;
-            const p = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? 0;
-            funcActualExcel = (a + p) || null;
+        if (allocEntry) {
+          const sec = isAsia ? allocEntry.asia : isPara ? allocEntry.para : null;
+          if (sec) {
+            roomActualExcel = sec.roomTotal;
+            funcActualExcel = sec.funcTotal;
+          } else if (!isAsia && !isPara) {
+            roomActualExcel = ((allocEntry.asia?.roomTotal ?? 0) + (allocEntry.para?.roomTotal ?? 0)) || null;
+            funcActualExcel = ((allocEntry.asia?.funcTotal ?? 0) + (allocEntry.para?.funcTotal ?? 0)) || null;
+          }
+        } else {
+          if (rcEntry) {
+            if (isAsia) roomActualExcel = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? null;
+            else if (isPara) roomActualExcel = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? null;
+            else {
+              const a = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? 0;
+              const p = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? 0;
+              roomActualExcel = (a + p) || null;
+            }
+          }
+          if (mrEntry) {
+            if (isAsia) funcActualExcel = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? null;
+            else if (isPara) funcActualExcel = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? null;
+            else {
+              const a = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? 0;
+              const p = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? 0;
+              funcActualExcel = (a + p) || null;
+            }
           }
         }
 
         const rcActualT = rc.reduce((s, i) => s + i.actualAmount, 0);
         const fcActualT = fc.reduce((s, i) => s + i.actualAmount, 0);
-        const otherActualT = h.costItems
+        const otherActualT = (h.costItems ?? [])
           .filter((i) => i.category !== "客室確保費" && i.category !== "会議室等確保費")
           .reduce((s, i) => s + i.actualAmount, 0);
         const roomForFacilityT = roomActualExcel ?? rcActualT;
@@ -523,7 +538,7 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
       },
       { budget: 0, actual: 0, funcActual: 0, facilityTotal: 0, offeredRooms: 0, hasExcelRc: false, hasExcelMr: false }
     );
-  }, [groupHotels, selectedGroup, roomChargeDb, meetingRoomDb]);
+  }, [groupHotels, selectedGroup, allocationDb, roomChargeDb, meetingRoomDb]);
 
   const colGroups = useMemo(() => {
     const map = new Map<string, ColDef[]>();
@@ -663,6 +678,7 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                   const rc = (h.costItems ?? []).filter((i) => i.category === "客室確保費");
                   const fc = (h.costItems ?? []).filter((i) => i.category === "会議室等確保費");
                   const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
+                  const allocEntry = facilityNoKey ? allocationDb?.[facilityNoKey] : null;
                   const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
                   const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
                   const isAsia = selectedGroup.startsWith("アジア");
@@ -670,34 +686,49 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
 
                   let roomActualExcel: number | null = null;
                   let dailyRoomExcel: number | null = null;
-                  if (rcEntry) {
-                    const sec = isAsia ? rcEntry.asia : isPara ? rcEntry.para : null;
-                    if (sec) {
-                      roomActualExcel = sec.totalCostTax ?? sec.totalCost ?? null;
-                      dailyRoomExcel = sec.dailyCostTax ?? sec.dailyCost ?? null;
-                    } else if (!isAsia && !isPara) {
-                      const a = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? 0;
-                      const p = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? 0;
-                      roomActualExcel = (a + p) || null;
-                    }
-                  }
                   let funcActualExcel: number | null = null;
                   let dailyFuncExcel: number | null = null;
-                  if (mrEntry) {
-                    const sec = isAsia ? mrEntry.asia : isPara ? mrEntry.para : null;
+
+                  // allocationDb (積算シート) takes priority over 別紙1-1/1-2
+                  if (allocEntry) {
+                    const sec = isAsia ? allocEntry.asia : isPara ? allocEntry.para : null;
                     if (sec) {
-                      funcActualExcel = sec.totalCostTax ?? sec.totalCost ?? null;
-                      dailyFuncExcel = sec.dailyCostTax ?? sec.dailyCost ?? null;
+                      roomActualExcel = sec.roomTotal;
+                      dailyRoomExcel = sec.dailyRoom;
+                      funcActualExcel = sec.funcTotal;
+                      dailyFuncExcel = sec.dailyFunc;
                     } else if (!isAsia && !isPara) {
-                      const a = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? 0;
-                      const p = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? 0;
-                      funcActualExcel = (a + p) || null;
+                      roomActualExcel = ((allocEntry.asia?.roomTotal ?? 0) + (allocEntry.para?.roomTotal ?? 0)) || null;
+                      funcActualExcel = ((allocEntry.asia?.funcTotal ?? 0) + (allocEntry.para?.funcTotal ?? 0)) || null;
+                    }
+                  } else {
+                    if (rcEntry) {
+                      const sec = isAsia ? rcEntry.asia : isPara ? rcEntry.para : null;
+                      if (sec) {
+                        roomActualExcel = sec.totalCostTax ?? sec.totalCost ?? null;
+                        dailyRoomExcel = sec.dailyCostTax ?? sec.dailyCost ?? null;
+                      } else if (!isAsia && !isPara) {
+                        const a = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? 0;
+                        const p = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? 0;
+                        roomActualExcel = (a + p) || null;
+                      }
+                    }
+                    if (mrEntry) {
+                      const sec = isAsia ? mrEntry.asia : isPara ? mrEntry.para : null;
+                      if (sec) {
+                        funcActualExcel = sec.totalCostTax ?? sec.totalCost ?? null;
+                        dailyFuncExcel = sec.dailyCostTax ?? sec.dailyCost ?? null;
+                      } else if (!isAsia && !isPara) {
+                        const a = mrEntry.asia?.totalCostTax ?? mrEntry.asia?.totalCost ?? 0;
+                        const p = mrEntry.para?.totalCostTax ?? mrEntry.para?.totalCost ?? 0;
+                        funcActualExcel = (a + p) || null;
+                      }
                     }
                   }
 
                   const rcActual = rc.reduce((s, i) => s + i.actualAmount, 0);
                   const fcActual = fc.reduce((s, i) => s + i.actualAmount, 0);
-                  const otherActual = h.costItems
+                  const otherActual = (h.costItems ?? [])
                     .filter((i) => i.category !== "客室確保費" && i.category !== "会議室等確保費")
                     .reduce((s, i) => s + i.actualAmount, 0);
                   const roomForFacility = roomActualExcel ?? rcActual;

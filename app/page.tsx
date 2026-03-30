@@ -7,6 +7,8 @@ import { Hotel, CostItem, Group, GROUPS, GROUP_COLORS } from "@/types";
 import SummarySection from "@/components/SummarySection";
 import type { RoomChargesDB } from "@/lib/parseRoomCharges";
 import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
+import type { AllocationDB } from "@/lib/parseBudgetAllocation";
+import { ALLOCATION_STORAGE_KEY } from "@/lib/parseBudgetAllocation";
 import HotelCard from "@/components/HotelCard";
 import HotelFormModal from "@/components/HotelFormModal";
 import CostItemModal from "@/components/CostItemModal";
@@ -58,12 +60,14 @@ export default function Page() {
   // Excel DB for room charges and meeting rooms
   const [roomChargeDb, setRoomChargeDb] = useState<RoomChargesDB | null>(null);
   const [meetingRoomDb, setMeetingRoomDb] = useState<MeetingRoomsDB | null>(null);
+  const [allocationDb, setAllocationDb] = useState<AllocationDB | null>(null);
 
   useEffect(() => {
     const loadDb = async () => {
       try {
         const rcRaw = localStorage.getItem("room-charges-v2-uploaded");
         const mrRaw = localStorage.getItem("meeting-rooms-v1-uploaded");
+        const allocRaw = localStorage.getItem(ALLOCATION_STORAGE_KEY);
         if (rcRaw) {
           setRoomChargeDb(JSON.parse(rcRaw));
         } else {
@@ -76,12 +80,14 @@ export default function Page() {
           const res = await fetch(`/budget-app/meeting-rooms.json`);
           if (res.ok) setMeetingRoomDb(await res.json());
         }
+        if (allocRaw) setAllocationDb(JSON.parse(allocRaw));
       } catch { /* ignore */ }
     };
     loadDb();
     const onStorage = (e: StorageEvent) => {
       if (e.key === "room-charges-v2-uploaded" && e.newValue) setRoomChargeDb(JSON.parse(e.newValue));
       if (e.key === "meeting-rooms-v1-uploaded" && e.newValue) setMeetingRoomDb(JSON.parse(e.newValue));
+      if (e.key === ALLOCATION_STORAGE_KEY && e.newValue) setAllocationDb(JSON.parse(e.newValue));
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -342,7 +348,7 @@ export default function Page() {
           </>
         )}
 
-        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} />}
+        {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} allocationDb={allocationDb} />}
 
         {activeTab === "execution" && <ExecutionDashboard hotels={hotels} />}
 

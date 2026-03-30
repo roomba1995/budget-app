@@ -7,6 +7,8 @@ import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/
 import HotelFormModal from "@/components/HotelFormModal";
 import AdminHotelImportModal from "@/components/AdminHotelImportModal";
 import { COL_CONFIG_KEY, ColConfig, LABEL_TO_ID, COL_DEF_IDS } from "@/components/GroupAllocationView";
+import type { UnmatchedRow } from "@/lib/parseBudgetAllocation";
+import { ALLOCATION_STORAGE_KEY, ALLOCATION_MATCH_KEY } from "@/lib/parseBudgetAllocation";
 
 /** RFC 4180 compliant CSV line parser — handles quoted fields with commas/newlines */
 function parseCSVLine(line: string): string[] {
@@ -249,6 +251,15 @@ export default function AdminPage() {
   const [mcCount, setMcCount] = useState<number>(0);
   const mcFileRef = useRef<HTMLInputElement>(null);
 
+  // ── 積算シート upload ──────────────────────────────────────────────────────
+  const [allocMsg, setAllocMsg] = useState<string | null>(null);
+  const [allocParsing, setAllocParsing] = useState(false);
+  const [allocCount, setAllocCount] = useState<number>(0);
+  const [allocUnmatched, setAllocUnmatched] = useState<UnmatchedRow[]>([]);
+  const [allocMatchSel, setAllocMatchSel] = useState<Record<string, string>>({}); // hotelName → facilityNo
+  const allocFileRef = useRef<HTMLInputElement>(null);
+  const [lastAllocFile, setLastAllocFile] = useState<File | null>(null);
+
   // Load localStorage after mount only — prevents SSR/hydration mismatch
   useEffect(() => {
     try {
@@ -262,6 +273,14 @@ export default function AdminPage() {
     try {
       const s2 = localStorage.getItem("meal-costs-v1-uploaded");
       if (s2) setMcCount(Object.keys(JSON.parse(s2)).length);
+    } catch { /* ignore */ }
+    try {
+      const s3 = localStorage.getItem(ALLOCATION_STORAGE_KEY);
+      if (s3) setAllocCount(Object.keys(JSON.parse(s3)).length);
+    } catch { /* ignore */ }
+    try {
+      const s4 = localStorage.getItem(ALLOCATION_MATCH_KEY);
+      if (s4) setAllocMatchSel(JSON.parse(s4));
     } catch { /* ignore */ }
   }, []);
 
@@ -323,6 +342,44 @@ export default function AdminPage() {
       setMcParsing(false);
       e.target.value = "";
     }
+  };
+
+  const runAllocParse = async (file: File, overrides: Record<string, string>) => {
+    setAllocParsing(true);
+    setAllocMsg(null);
+    try {
+      const { parseBudgetAllocationFromFile } = await import("@/lib/parseBudgetAllocation");
+      const result = await parseBudgetAllocationFromFile(file, overrides);
+      localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(result.db));
+      window.dispatchEvent(new StorageEvent("storage", { key: ALLOCATION_STORAGE_KEY, newValue: JSON.stringify(result.db) }));
+      setAllocCount(Object.keys(result.db).length);
+      setAllocUnmatched(result.unmatched);
+      const unmatchedCount = result.unmatched.length;
+      setAllocMsg(`✓ アジア選手: ${result.asiaCount}施設、パラ選手: ${result.paraCount}施設を保存しました。${unmatchedCount > 0 ? `（未マッチ${unmatchedCount}件 — 下のテーブルで対応施設を選択してください）` : ""}`);
+    } catch (err) {
+      setAllocMsg(`⚠ エラー: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setAllocParsing(false);
+    }
+  };
+
+  const handleAllocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLastAllocFile(file);
+    const overrides: Record<string, string> = {};
+    try {
+      const s = localStorage.getItem(ALLOCATION_MATCH_KEY);
+      if (s) Object.assign(overrides, JSON.parse(s));
+    } catch { /* ignore */ }
+    await runAllocParse(file, overrides);
+    e.target.value = "";
+  };
+
+  const handleAllocMatchApply = async () => {
+    if (!lastAllocFile) return;
+    localStorage.setItem(ALLOCATION_MATCH_KEY, JSON.stringify(allocMatchSel));
+    await runAllocParse(lastAllocFile, allocMatchSel);
   };
 
   const handleColImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -627,6 +684,76 @@ export default function AdminPage() {
               アップロードしたデータはブラウザのローカルストレージに保存されます。各ホテルの詳細ページ「飲食費」タブで表示されます。
             </p>
           </div>
+        </div>
+
+        {/* 積算シート ── Excelアップロード */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-base font-semibold text-gray-800">積算シート — Excelアップロード</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              「【251001】アジア選手積算」「【251001】パラ選手積算」シートを含むExcelをアップロードすると、グループ別配宿積算の金額を更新します
+            </p>
+          </div>
+          <div className="px-5 py-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => allocFileRef.current?.click()}
+              disabled={allocParsing}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 disabled:opacity-60 disabled:cursor-wait transition-colors"
+            >
+              {allocParsing ? "解析中..." : "↑ Excelアップロード (.xlsm / .xlsx)"}
+            </button>
+            <input ref={allocFileRef} type="file" accept=".xlsm,.xlsx,.xls" className="hidden" onChange={handleAllocUpload} />
+            {allocCount > 0 && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                現在: {allocCount}施設分のデータ保存済み
+              </span>
+            )}
+            {allocMsg && (
+              <span className={`text-xs ${allocMsg.startsWith("⚠") ? "text-red-500" : "text-green-600"}`}>
+                {allocMsg}
+              </span>
+            )}
+          </div>
+
+          {/* 未マッチ施設 — 手動マッピングUI */}
+          {allocUnmatched.length > 0 && (
+            <div className="px-5 pb-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="text-xs font-semibold text-amber-700 mb-2">
+                  施設番号が未登録のホテル（{allocUnmatched.length}件）— 対応施設を選択してください
+                </div>
+                <div className="space-y-2">
+                  {allocUnmatched.map((u, idx) => (
+                    <div key={idx} className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-amber-800 font-medium min-w-[200px]">
+                        [{u.group === "asia" ? "アジア" : "パラ"}] {u.hotelName}
+                        {u.facilityNo && <span className="ml-1 text-amber-500">（施設番号: {u.facilityNo}）</span>}
+                      </span>
+                      <select
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                        value={allocMatchSel[u.hotelName] ?? ""}
+                        onChange={(e) => setAllocMatchSel((prev) => ({ ...prev, [u.hotelName]: e.target.value }))}
+                      >
+                        <option value="">— 対応施設を選択 —</option>
+                        {[...hotels].sort((a, b) => a.name.localeCompare(b.name, "ja")).map((h) => (
+                          <option key={h.id} value={h.facilityNo ? String(parseInt(h.facilityNo, 10)) : h.id}>
+                            {h.facilityNo ? `[${h.facilityNo}] ` : ""}{h.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleAllocMatchApply}
+                  disabled={allocParsing || !lastAllocFile || Object.keys(allocMatchSel).length === 0}
+                  className="mt-3 px-3 py-1.5 text-xs font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                >
+                  マッピングを適用して再インポート
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 施設管理セクション */}
