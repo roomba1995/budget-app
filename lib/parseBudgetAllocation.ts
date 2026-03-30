@@ -3,10 +3,13 @@
  *
  * Column mapping (0-based, row index 3 = header):
  *   0: 通し番号  1: 施設番号  2: 宿泊施設名
- *   3: 一日あたり客室総額(税込)   8: 利用想定客室数
- *  10: 一日あたりファンクション総額(税込)
- *  11: 客室総計(税込)   12: ファンクション総計(税込)
- *  23: 施設合計  24: 開始日  25: 終了日  26: 確保泊数
+ *   3: 一日あたり客室総額(税込)   4: アスリートミール単価(通常)  5: (ハラル)  7: G&G単価
+ *   8: 利用想定客室数  10: 一日あたりファンクション総額(税込)
+ *  11: 客室総計(税込)  12: ファンクション総計(税込)
+ *  13: 差額朝食加算  14: ３食合計(通常)  15: ３食合計(ハラル)  16: G&G合計
+ *  17: 入湯税  18: 営業補償等  19: 扉外し  20: キャンセルポリシー
+ *  21: クリーンベニュー(機器)  22: クリーンベニュー(テナント)
+ *  23: 施設合計  24: 開始日(Y)  25: 終了日(Z)  26: 確保泊数(AA)  27: 延べ人泊数(AB)
  */
 
 export interface AllocationSection {
@@ -23,11 +26,11 @@ export interface AllocationSection {
   mealTotalHalal: number | null;     // P col 15
   grabAndGoTotal: number | null;     // Q col 16
   bathTax: number | null;            // R col 17
-  doorRemoval: number | null;        // S col 18
-  businessComp: number | null;       // T col 19
-  cleanVenueMachine: number | null;  // U col 20
-  cleanVenueTenant: number | null;   // V col 21
-  cancelPolicyAmount: number | null; // W col 22
+  businessComp: number | null;       // S col 18 (営業補償等)
+  doorRemoval: number | null;        // T col 19 (扉外し)
+  cancelPolicyAmount: number | null; // U col 20 (キャンセルポリシー)
+  cleanVenueMachine: number | null;  // V col 21 (クリーンベニュー機器)
+  cleanVenueTenant: number | null;   // W col 22 (クリーンベニューテナント)
   facilityTotal: number | null;      // X col 23
   startDate: string | null;          // Y col 24
   endDate: string | null;            // Z col 25
@@ -126,11 +129,11 @@ function parseSheet(
       mealTotalHalal: toNum((row as unknown[])[15]),
       grabAndGoTotal: toNum((row as unknown[])[16]),
       bathTax: toNum((row as unknown[])[17]),
-      doorRemoval: toNum((row as unknown[])[18]),
-      businessComp: toNum((row as unknown[])[19]),
-      cleanVenueMachine: toNum((row as unknown[])[20]),
-      cleanVenueTenant: toNum((row as unknown[])[21]),
-      cancelPolicyAmount: toNum((row as unknown[])[22]),
+      businessComp: toNum((row as unknown[])[18]),    // S: 営業補償等
+      doorRemoval: toNum((row as unknown[])[19]),     // T: 扉外し
+      cancelPolicyAmount: toNum((row as unknown[])[20]), // U: キャンセルポリシー
+      cleanVenueMachine: toNum((row as unknown[])[21]),  // V: クリーンベニュー機器
+      cleanVenueTenant: toNum((row as unknown[])[22]),   // W: クリーンベニューテナント
       facilityTotal: toNum((row as unknown[])[23]),
       startDate: formatDateValue((row as unknown[])[24]),
       endDate: formatDateValue((row as unknown[])[25]),
