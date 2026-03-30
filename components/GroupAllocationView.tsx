@@ -224,12 +224,41 @@ export interface ColConfig {
   group?: string;
 }
 
+/** Resolve which COL_DEF IDs are covered by a saved config array.
+ *  Uses the same label→ID priority as applyColConfig. */
+function resolveConfiguredIds(cfg: ColConfig[], defs: ColDef[]): Set<string> {
+  const nLabelMap: Record<string, string> = {};
+  for (const [k, v] of Object.entries(LABEL_TO_ID)) nLabelMap[normLabel(k)] = v;
+  const byLabel = new Map<string, string>();
+  for (const d of defs) { const nl = normLabel(d.label); if (!byLabel.has(nl)) byLabel.set(nl, d.id); }
+  const ids = new Set<string>();
+  for (const c of cfg) {
+    const nl = normLabel(c.label);
+    const tid = nLabelMap[nl];
+    if (tid && defs.some(d => d.id === tid)) { ids.add(tid); continue; }
+    const did = byLabel.get(nl);
+    if (did) { ids.add(did); continue; }
+    if (defs.some(d => d.id === c.id)) ids.add(c.id);
+  }
+  return ids;
+}
+
 function loadHidden(): Set<string> {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return new Set(JSON.parse(s));
-    // If a col config is stored, show ALL configured columns (config defines the visible set)
-    if (localStorage.getItem(COL_CONFIG_KEY)) return new Set();
+    const cfgStr = localStorage.getItem(COL_CONFIG_KEY);
+    if (cfgStr) {
+      // Config present: configured cols are visible; new cols not in config start hidden
+      try {
+        const cfg: ColConfig[] = JSON.parse(cfgStr);
+        if (cfg.length) {
+          const configuredIds = resolveConfiguredIds(cfg, COL_DEFS);
+          return new Set(COL_DEFS.filter(d => !configuredIds.has(d.id)).map(d => d.id));
+        }
+      } catch { /* fall through */ }
+      return new Set();
+    }
     return new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
   } catch {
     return new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
@@ -460,14 +489,21 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
 
     if (resolved.size === 0) return defs;
 
-    // Return ONLY the columns present in the config, in config order
-    return defs
+    // Configured columns in config order
+    const configuredDefs = defs
       .filter((d) => resolved.has(d.id))
       .map((d) => {
         const ov = resolved.get(d.id)!;
         return { ...d, label: ov.label, ...(ov.group ? { group: ov.group } : {}) };
       })
       .sort((a, b) => (resolved.get(a.id)!.order ?? 9999) - (resolved.get(b.id)!.order ?? 9999));
+
+    // Append COL_DEFs not in the saved config (new columns added after config was saved).
+    // These will be hidden by loadHidden / refresh(true), but visible in the settings panel.
+    const configuredIds = new Set(configuredDefs.map(d => d.id));
+    const unconfiguredDefs = defs.filter(d => !configuredIds.has(d.id));
+
+    return [...configuredDefs, ...unconfiguredDefs];
   } catch {
     return defs;
   }
@@ -521,7 +557,19 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
     const refresh = (resetHidden: boolean) => {
       setActiveDefs(applyColConfig(COL_DEFS));
       if (resetHidden) {
-        // New config defines the column set — clear manual hide state so all imported cols are visible
+        // Configured cols become visible; new cols not in the config stay hidden
+        try {
+          const cfgStr = localStorage.getItem(COL_CONFIG_KEY);
+          if (cfgStr) {
+            const cfg: ColConfig[] = JSON.parse(cfgStr);
+            const configuredIds = resolveConfiguredIds(cfg, COL_DEFS);
+            const toHide = new Set(COL_DEFS.filter(d => !configuredIds.has(d.id)).map(d => d.id));
+            setHiddenCols(toHide);
+            if (toHide.size > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(toHide)));
+            else localStorage.removeItem(STORAGE_KEY);
+            return;
+          }
+        } catch { /* fall through */ }
         setHiddenCols(new Set());
         localStorage.removeItem(STORAGE_KEY);
       }
