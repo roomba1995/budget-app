@@ -6,7 +6,7 @@ import { useHotels, MergeAlert } from "@/hooks/useHotels";
 import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/types";
 import HotelFormModal from "@/components/HotelFormModal";
 import AdminHotelImportModal from "@/components/AdminHotelImportModal";
-import { COL_CONFIG_KEY, ColConfig, LABEL_TO_ID, COL_DEF_IDS } from "@/components/GroupAllocationView";
+import { COL_CONFIG_KEY, ColConfig, LABEL_TO_ID, COL_DEF_IDS, ALLOC_NEW_COL_IDS } from "@/components/GroupAllocationView";
 import type { UnmatchedRow } from "@/lib/parseBudgetAllocation";
 import { ALLOCATION_STORAGE_KEY, ALLOCATION_MATCH_KEY } from "@/lib/parseBudgetAllocation";
 
@@ -65,6 +65,22 @@ function loadColConfig(): ColConfig[] {
   return []; // nothing stored yet
 }
 
+/** Labels/groups for new alloc cols to inject into CSV export when missing from saved config */
+const NEW_ALLOC_COL_DEFS: Record<string, { label: string; group: string }> = {
+  mealBreakfastAddon: { label: "アスリートミール差額の朝食加算", group: "日程・集計" },
+  mealTotalNormal:    { label: "アスリートミール３食合計（通常）", group: "日程・集計" },
+  mealTotalHalal:     { label: "アスリートミール３食合計（ハラル）", group: "日程・集計" },
+  grabAndGoTotal:     { label: "グラブアンドゴー合計",           group: "日程・集計" },
+};
+
+/** Anchor col IDs for positioning new alloc cols in exported CSV */
+const NEW_ALLOC_ANCHORS: Record<string, string[]> = {
+  mealBreakfastAddon: ["dailyFuncActual", "funcActualTotal", "funcBudgetTotal"],
+  mealTotalNormal:    ["mealBreakfastAddon", "dailyFuncActual", "funcBudgetTotal"],
+  mealTotalHalal:     ["mealTotalNormal", "mealBreakfastAddon", "dailyFuncActual"],
+  grabAndGoTotal:     ["mealTotalHalal", "mealTotalNormal", "mealBreakfastAddon"],
+};
+
 function exportColConfigCsv() {
   const cfg = loadColConfig();
   if (!cfg.length) {
@@ -72,6 +88,29 @@ function exportColConfigCsv() {
     return;
   }
   const sorted = [...cfg].sort((a, b) => a.order - b.order);
+
+  // Inject new alloc cols that are missing from the saved config
+  const existingIds = new Set(sorted.map(c => c.id));
+  for (const newId of Array.from(ALLOC_NEW_COL_IDS)) {
+    if (existingIds.has(newId)) continue;
+    const def = NEW_ALLOC_COL_DEFS[newId];
+    if (!def) continue;
+    // Find insertion point based on anchor cols
+    const anchors = NEW_ALLOC_ANCHORS[newId] ?? [];
+    let insertAt = sorted.length;
+    for (const anchorId of anchors) {
+      const idx = sorted.findIndex(c => c.id === anchorId);
+      if (idx >= 0) { insertAt = idx + 1; break; }
+    }
+    const prevOrder = insertAt > 0 ? sorted[insertAt - 1].order : 0;
+    const nextOrder = insertAt < sorted.length ? sorted[insertAt].order : prevOrder + 2;
+    const newOrder = (prevOrder + nextOrder) / 2;
+    sorted.splice(insertAt, 0, { id: newId, label: def.label, order: newOrder, group: def.group });
+    existingIds.add(newId);
+  }
+  // Re-number orders to be consecutive integers after insertion
+  sorted.forEach((c, i) => { c.order = i; });
+
   const header = ["id", "label", "order", "group"];
   const csv = [header, ...sorted.map((c) => [c.id, c.label, String(c.order), c.group ?? ""])]
     .map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");

@@ -225,14 +225,22 @@ export interface ColConfig {
 }
 
 /** IDs of the 4 new columns added in the 積算シート integration (N/O/P/Q cols).
- *  These are always appended at their natural COL_DEFS position when a saved config
- *  doesn't include them, so they appear in the settings panel even with old configs. */
-const ALLOC_NEW_COL_IDS = new Set([
+ *  Exported so admin page can include them in CSV export. */
+export const ALLOC_NEW_COL_IDS = new Set([
   "mealBreakfastAddon",  // N=13: アスリートミール差額の朝食加算
   "mealTotalNormal",     // O=14: アスリートミール３食合計（通常）
   "mealTotalHalal",      // P=15: アスリートミール３食合計（ハラル）
   "grabAndGoTotal",      // Q=16: グラブアンドゴー合計
 ]);
+
+/** Anchor columns for inserting new alloc cols at the right position.
+ *  Each new col is inserted after the first matching anchor found in the result. */
+const NEW_COL_ANCHORS: Record<string, string[]> = {
+  mealBreakfastAddon: ["dailyFuncActual", "funcActualTotal", "funcBudgetTotal"],
+  mealTotalNormal:    ["mealBreakfastAddon", "dailyFuncActual", "funcBudgetTotal"],
+  mealTotalHalal:     ["mealTotalNormal",    "mealBreakfastAddon", "dailyFuncActual"],
+  grabAndGoTotal:     ["mealTotalHalal",     "mealTotalNormal",    "mealBreakfastAddon"],
+};
 
 function loadHidden(): Set<string> {
   try {
@@ -479,18 +487,18 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
       })
       .sort((a, b) => (resolved.get(a.id)!.order ?? 9999) - (resolved.get(b.id)!.order ?? 9999));
 
-    // Insert new alloc cols (N/O/P/Q) not yet in the saved config at their natural COL_DEFS position.
+    // Insert new alloc cols (N/O/P/Q) not yet in the saved config at anchor-defined positions.
     const configuredIds = new Set(configuredDefs.map(d => d.id));
     const newCols = defs.filter(d => ALLOC_NEW_COL_IDS.has(d.id) && !configuredIds.has(d.id));
     if (newCols.length === 0) return configuredDefs;
 
-    const defsIndexMap = new Map(defs.map((d, i) => [d.id, i]));
     const result = [...configuredDefs];
-    for (const newDef of newCols) {  // newCols is in COL_DEFS order (from defs.filter)
-      const newIdx = defsIndexMap.get(newDef.id) ?? 9999;
-      let insertAt = 0;
-      for (let i = 0; i < result.length; i++) {
-        if ((defsIndexMap.get(result[i].id) ?? 0) < newIdx) insertAt = i + 1;
+    for (const newDef of newCols) {  // newCols is in COL_DEFS order
+      const anchors = NEW_COL_ANCHORS[newDef.id] ?? [];
+      let insertAt = result.length; // default: append at end
+      for (const anchorId of anchors) {
+        const anchorIdx = result.findIndex(d => d.id === anchorId);
+        if (anchorIdx >= 0) { insertAt = anchorIdx + 1; break; }
       }
       result.splice(insertAt, 0, newDef);
     }
