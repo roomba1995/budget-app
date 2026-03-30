@@ -373,19 +373,30 @@ export const LABEL_TO_ID: Record<string, string> = {
   // 料金 (new columns from 積算シート)
   "扉外し": "doorRemoval",
   "営業補償等": "businessComp",
+  "営業補償等で返せなかった分の料金": "businessComp",
+  "営業補償等（返せなかった分）": "businessComp",
   "クリーンベニュー（機器）": "cleanVenueMachine",
   "クリーンベニュー\n（機器）": "cleanVenueMachine",
+  "クリーンベニュー（機器等）": "cleanVenueMachine",
   "クリーンベニュー（テナント）": "cleanVenueTenant",
   "クリーンベニュー\n（テナント）": "cleanVenueTenant",
   "キャンセルポリシー金額": "cancelPolicyAmount",
   "キャンセルポリシー\n金額": "cancelPolicyAmount",
+  "キャンセルポリシーで返せなかった分": "cancelPolicyAmount",
+  "キャンセルポリシー返金不可額": "cancelPolicyAmount",
   // 食事 (unit prices from 積算シート)
   "アスリートミール単価（通常）": "mealPriceNormal",
   "アスリートミール\n単価（通常）": "mealPriceNormal",
+  "アスリートミール３食単価（通常）": "mealPriceNormal",
   "アスリートミール単価（ハラル）": "mealPriceHalal",
   "アスリートミール\n単価（ハラル）": "mealPriceHalal",
+  "アスリートミール３食単価（ハラル）": "mealPriceHalal",
   "グラブアンドゴー単価": "grabAndGoPrice",
   "グラブアンドゴー\n単価": "grabAndGoPrice",
+  // 客室・会議室 label variations (short forms without 費/等)
+  "客室確保合計": "roomBudgetTotal",
+  "会議室確保合計": "funcBudgetTotal",
+  "会議室確保費合計": "funcBudgetTotal",
 };
 
 /** Normalize a label for robust matching:
