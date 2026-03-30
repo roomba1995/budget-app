@@ -35,7 +35,25 @@ interface Extra {
   funcActualExcel: number | null;
   dailyRoomExcel: number | null;
   dailyFuncExcel: number | null;
-  facilityTotal: number | null;  // sum of all categories with Excel overrides
+  facilityTotal: number | null;
+  // From allocationDb (積算シート)
+  allocStartDate: string | null;
+  allocEndDate: string | null;
+  allocNights: number | null;
+  extendedNights: number | null;
+  bathTaxAlloc: number | null;
+  doorRemoval: number | null;
+  businessComp: number | null;
+  cleanVenueMachine: number | null;
+  cleanVenueTenant: number | null;
+  cancelPolicyAmount: number | null;
+  mealBreakfastAddon: number | null;
+  mealTotalNormal: number | null;
+  mealTotalHalal: number | null;
+  grabAndGoTotal: number | null;
+  mealPriceNormal: number | null;
+  mealPriceHalal: number | null;
+  grabAndGoPrice: number | null;
 }
 
 function numOrDash(v: number | undefined | null): string {
@@ -127,16 +145,28 @@ const COL_DEFS: ColDef[] = [
   { id: "priceFluctuation",    label: "変動\n有無",        defaultVisible: false, group: "料金", align: "center",
     render: (h) => h.priceFluctuation ?? "—" },
   { id: "bathTax",             label: "入湯税\n/宿泊税",   defaultVisible: false, group: "料金", align: "right",
-    render: (h) => yenOrDash(h.bathTax) },
+    render: (h, ex) => yenOrDash(ex.bathTaxAlloc ?? h.bathTax) },
+  { id: "doorRemoval",         label: "扉外し",            defaultVisible: false, group: "料金", align: "right",
+    render: (_h, ex) => yenOrDash(ex.doorRemoval) },
+  { id: "businessComp",        label: "営業補償等",         defaultVisible: false, group: "料金", align: "right",
+    render: (_h, ex) => yenOrDash(ex.businessComp) },
+  { id: "cleanVenueMachine",   label: "クリーンベニュー\n（機器）", defaultVisible: false, group: "料金", align: "right",
+    render: (_h, ex) => yenOrDash(ex.cleanVenueMachine) },
+  { id: "cleanVenueTenant",    label: "クリーンベニュー\n（テナント）", defaultVisible: false, group: "料金", align: "right",
+    render: (_h, ex) => yenOrDash(ex.cleanVenueTenant) },
+  { id: "cancelPolicyAmount",  label: "キャンセルポリシー\n金額", defaultVisible: false, group: "料金", align: "right",
+    render: (_h, ex) => yenOrDash(ex.cancelPolicyAmount) },
   { id: "cancellationPolicy",  label: "キャンセル\nポリシー", defaultVisible: false, group: "料金", align: "left",
     render: (h) => h.cancellationPolicy ?? "—" },
   // ── 日程・集計 ────────────────────────────
   { id: "ci",     label: "CI",       defaultVisible: true,  group: "日程・集計", align: "center",
-    render: (h) => h.contractStartDate ? fmtDate(h.contractStartDate) : "—" },
+    render: (h, ex) => ex.allocStartDate ? fmtDate(ex.allocStartDate) : (h.contractStartDate ? fmtDate(h.contractStartDate) : "—") },
   { id: "co",     label: "CO",       defaultVisible: true,  group: "日程・集計", align: "center",
-    render: (h) => h.contractEndDate ? fmtDate(h.contractEndDate) : "—" },
+    render: (h, ex) => ex.allocEndDate ? fmtDate(ex.allocEndDate) : (h.contractEndDate ? fmtDate(h.contractEndDate) : "—") },
   { id: "nights", label: "確保\n泊数", defaultVisible: true, group: "日程・集計", align: "right",
-    render: (_h, ex) => ex.nights > 0 ? `${ex.nights} 泊` : "—" },
+    render: (_h, ex) => ex.allocNights != null ? `${ex.allocNights} 泊` : (ex.nights > 0 ? `${ex.nights} 泊` : "—") },
+  { id: "extendedNights", label: "延べ\n人泊数", defaultVisible: false, group: "日程・集計", align: "right",
+    render: (_h, ex) => ex.extendedNights != null ? ex.extendedNights.toLocaleString() : "—" },
   // dailyRoomBudget: user CSV may label this "一日あたり宿泊総額" — prefer Excel daily cost
   { id: "dailyRoomBudget", label: "1日あたり\n客室費", defaultVisible: true, group: "日程・集計", align: "right",
     render: (_h, ex) => ex.dailyRoomExcel != null ? formatCurrency(Math.round(ex.dailyRoomExcel)) : (ex.nights > 0 && ex.roomBudget > 0 ? formatCurrency(Math.round(ex.roomBudget / ex.nights)) : "—") },
@@ -155,6 +185,21 @@ const COL_DEFS: ColDef[] = [
     render: (_h, ex) => yenOrDash(ex.funcActualExcel) },
   { id: "dailyFuncActual", label: "1日あたり\nファンクション費", defaultVisible: true, group: "日程・集計", align: "right",
     render: (_h, ex) => ex.dailyFuncExcel != null ? formatCurrency(Math.round(ex.dailyFuncExcel)) : "—" },
+  { id: "mealBreakfastAddon", label: "アスリートミール\n差額朝食加算", defaultVisible: false, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.mealBreakfastAddon) },
+  { id: "mealTotalNormal", label: "アスリートミール\n３食合計（通常）", defaultVisible: false, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.mealTotalNormal) },
+  { id: "mealTotalHalal", label: "アスリートミール\n３食合計（ハラル）", defaultVisible: false, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.mealTotalHalal) },
+  { id: "grabAndGoTotal", label: "グラブアンドゴー\n合計", defaultVisible: false, group: "日程・集計", align: "right",
+    render: (_h, ex) => yenOrDash(ex.grabAndGoTotal) },
+  // Athlete meal unit prices from 積算シート (E, F, H)
+  { id: "mealPriceNormal", label: "アスリートミール\n単価（通常）", defaultVisible: false, group: "食事", align: "right",
+    render: (_h, ex) => yenOrDash(ex.mealPriceNormal) },
+  { id: "mealPriceHalal", label: "アスリートミール\n単価（ハラル）", defaultVisible: false, group: "食事", align: "right",
+    render: (_h, ex) => yenOrDash(ex.mealPriceHalal) },
+  { id: "grabAndGoPrice", label: "グラブアンドゴー\n単価", defaultVisible: false, group: "食事", align: "right",
+    render: (_h, ex) => yenOrDash(ex.grabAndGoPrice) },
 ];
 
 function fmtDate(d: string): string {
@@ -313,6 +358,34 @@ export const LABEL_TO_ID: Record<string, string> = {
   "一日あたりファンクション総額": "dailyFuncActual",
   "1日あたりファンクション費（実績）": "dailyFuncActual",
   "1日あたり\nファンクション費（実績）": "dailyFuncActual",
+  // 日程・集計 (new columns from 積算シート)
+  "延べ人泊数": "extendedNights",
+  "延べ\n人泊数": "extendedNights",
+  "アスリートミール差額朝食加算": "mealBreakfastAddon",
+  "アスリートミール\n差額朝食加算": "mealBreakfastAddon",
+  "アスリートミール差額の朝食加算": "mealBreakfastAddon",
+  "アスリートミール３食合計（通常）": "mealTotalNormal",
+  "アスリートミール\n３食合計（通常）": "mealTotalNormal",
+  "アスリートミール３食合計（ハラル）": "mealTotalHalal",
+  "アスリートミール\n３食合計（ハラル）": "mealTotalHalal",
+  "グラブアンドゴー合計": "grabAndGoTotal",
+  "グラブアンドゴー\n合計": "grabAndGoTotal",
+  // 料金 (new columns from 積算シート)
+  "扉外し": "doorRemoval",
+  "営業補償等": "businessComp",
+  "クリーンベニュー（機器）": "cleanVenueMachine",
+  "クリーンベニュー\n（機器）": "cleanVenueMachine",
+  "クリーンベニュー（テナント）": "cleanVenueTenant",
+  "クリーンベニュー\n（テナント）": "cleanVenueTenant",
+  "キャンセルポリシー金額": "cancelPolicyAmount",
+  "キャンセルポリシー\n金額": "cancelPolicyAmount",
+  // 食事 (unit prices from 積算シート)
+  "アスリートミール単価（通常）": "mealPriceNormal",
+  "アスリートミール\n単価（通常）": "mealPriceNormal",
+  "アスリートミール単価（ハラル）": "mealPriceHalal",
+  "アスリートミール\n単価（ハラル）": "mealPriceHalal",
+  "グラブアンドゴー単価": "grabAndGoPrice",
+  "グラブアンドゴー\n単価": "grabAndGoPrice",
 };
 
 /** Normalize a label for robust matching:
@@ -740,6 +813,7 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                   const facilityTotalCalc = roomForFacility + funcForFacility + otherActual;
                   const facilityTotal: number | null = facilityTotalCalc > 0 ? facilityTotalCalc : null;
 
+                  const sec = allocEntry ? (isAsia ? allocEntry.asia : isPara ? allocEntry.para : null) : null;
                   const ex: Extra = {
                     nights: nightsBetween(h.contractStartDate, h.contractEndDate),
                     roomBudget: rc.reduce((s, i) => s + i.budgetAmount, 0),
@@ -750,6 +824,23 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                     dailyRoomExcel,
                     dailyFuncExcel,
                     facilityTotal,
+                    allocStartDate: sec?.startDate ?? null,
+                    allocEndDate: sec?.endDate ?? null,
+                    allocNights: sec?.nights ?? null,
+                    extendedNights: sec?.extendedNights ?? null,
+                    bathTaxAlloc: sec?.bathTax ?? null,
+                    doorRemoval: sec?.doorRemoval ?? null,
+                    businessComp: sec?.businessComp ?? null,
+                    cleanVenueMachine: sec?.cleanVenueMachine ?? null,
+                    cleanVenueTenant: sec?.cleanVenueTenant ?? null,
+                    cancelPolicyAmount: sec?.cancelPolicyAmount ?? null,
+                    mealBreakfastAddon: sec?.mealBreakfastAddon ?? null,
+                    mealTotalNormal: sec?.mealTotalNormal ?? null,
+                    mealTotalHalal: sec?.mealTotalHalal ?? null,
+                    grabAndGoTotal: sec?.grabAndGoTotal ?? null,
+                    mealPriceNormal: sec?.mealPriceNormal ?? null,
+                    mealPriceHalal: sec?.mealPriceHalal ?? null,
+                    grabAndGoPrice: sec?.grabAndGoPrice ?? null,
                   };
                   return (
                     <tr key={h.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">

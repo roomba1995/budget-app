@@ -10,15 +10,29 @@
  */
 
 export interface AllocationSection {
-  dailyRoom: number | null;
-  rooms: number | null;
-  dailyFunc: number | null;
-  roomTotal: number | null;
-  funcTotal: number | null;
-  facilityTotal: number | null;
-  nights: number | null;
-  startDate: string | null;
-  endDate: string | null;
+  dailyRoom: number | null;          // D col 3
+  mealPriceNormal: number | null;    // E col 4
+  mealPriceHalal: number | null;     // F col 5
+  grabAndGoPrice: number | null;     // H col 7
+  rooms: number | null;              // col 8
+  dailyFunc: number | null;          // K col 10
+  roomTotal: number | null;          // L col 11
+  funcTotal: number | null;          // M col 12
+  mealBreakfastAddon: number | null; // N col 13
+  mealTotalNormal: number | null;    // O col 14
+  mealTotalHalal: number | null;     // P col 15
+  grabAndGoTotal: number | null;     // Q col 16
+  bathTax: number | null;            // R col 17
+  doorRemoval: number | null;        // S col 18
+  businessComp: number | null;       // T col 19
+  cleanVenueMachine: number | null;  // U col 20
+  cleanVenueTenant: number | null;   // V col 21
+  cancelPolicyAmount: number | null; // W col 22
+  facilityTotal: number | null;      // X col 23
+  startDate: string | null;          // Y col 24
+  endDate: string | null;            // Z col 25
+  nights: number | null;             // AA col 26
+  extendedNights: number | null;     // AB col 27
 }
 
 export interface AllocationEntry {
@@ -100,14 +114,28 @@ function parseSheet(
 
     const section: AllocationSection = {
       dailyRoom: toNum((row as unknown[])[3]),
+      mealPriceNormal: toNum((row as unknown[])[4]),
+      mealPriceHalal: toNum((row as unknown[])[5]),
+      grabAndGoPrice: toNum((row as unknown[])[7]),
       rooms: toNum((row as unknown[])[8]),
       dailyFunc: toNum((row as unknown[])[10]),
       roomTotal: toNum((row as unknown[])[11]),
       funcTotal: toNum((row as unknown[])[12]),
+      mealBreakfastAddon: toNum((row as unknown[])[13]),
+      mealTotalNormal: toNum((row as unknown[])[14]),
+      mealTotalHalal: toNum((row as unknown[])[15]),
+      grabAndGoTotal: toNum((row as unknown[])[16]),
+      bathTax: toNum((row as unknown[])[17]),
+      doorRemoval: toNum((row as unknown[])[18]),
+      businessComp: toNum((row as unknown[])[19]),
+      cleanVenueMachine: toNum((row as unknown[])[20]),
+      cleanVenueTenant: toNum((row as unknown[])[21]),
+      cancelPolicyAmount: toNum((row as unknown[])[22]),
       facilityTotal: toNum((row as unknown[])[23]),
-      nights: toNum((row as unknown[])[26]),
       startDate: formatDateValue((row as unknown[])[24]),
       endDate: formatDateValue((row as unknown[])[25]),
+      nights: toNum((row as unknown[])[26]),
+      extendedNights: toNum((row as unknown[])[27]),
     };
 
     if (!facilityNo) {
