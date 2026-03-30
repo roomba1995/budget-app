@@ -224,41 +224,22 @@ export interface ColConfig {
   group?: string;
 }
 
-/** Resolve which COL_DEF IDs are covered by a saved config array.
- *  Uses the same label→ID priority as applyColConfig. */
-function resolveConfiguredIds(cfg: ColConfig[], defs: ColDef[]): Set<string> {
-  const nLabelMap: Record<string, string> = {};
-  for (const [k, v] of Object.entries(LABEL_TO_ID)) nLabelMap[normLabel(k)] = v;
-  const byLabel = new Map<string, string>();
-  for (const d of defs) { const nl = normLabel(d.label); if (!byLabel.has(nl)) byLabel.set(nl, d.id); }
-  const ids = new Set<string>();
-  for (const c of cfg) {
-    const nl = normLabel(c.label);
-    const tid = nLabelMap[nl];
-    if (tid && defs.some(d => d.id === tid)) { ids.add(tid); continue; }
-    const did = byLabel.get(nl);
-    if (did) { ids.add(did); continue; }
-    if (defs.some(d => d.id === c.id)) ids.add(c.id);
-  }
-  return ids;
-}
+/** IDs of the 4 new columns added in the 積算シート integration (N/O/P/Q cols).
+ *  These are always appended at their natural COL_DEFS position when a saved config
+ *  doesn't include them, so they appear in the settings panel even with old configs. */
+const ALLOC_NEW_COL_IDS = new Set([
+  "mealBreakfastAddon",  // N=13: アスリートミール差額の朝食加算
+  "mealTotalNormal",     // O=14: アスリートミール３食合計（通常）
+  "mealTotalHalal",      // P=15: アスリートミール３食合計（ハラル）
+  "grabAndGoTotal",      // Q=16: グラブアンドゴー合計
+]);
 
 function loadHidden(): Set<string> {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return new Set(JSON.parse(s));
-    const cfgStr = localStorage.getItem(COL_CONFIG_KEY);
-    if (cfgStr) {
-      // Config present: configured cols are visible; new cols not in config start hidden
-      try {
-        const cfg: ColConfig[] = JSON.parse(cfgStr);
-        if (cfg.length) {
-          const configuredIds = resolveConfiguredIds(cfg, COL_DEFS);
-          return new Set(COL_DEFS.filter(d => !configuredIds.has(d.id)).map(d => d.id));
-        }
-      } catch { /* fall through */ }
-      return new Set();
-    }
+    // Config present: all configured cols visible; only new alloc cols start hidden
+    if (localStorage.getItem(COL_CONFIG_KEY)) return new Set(ALLOC_NEW_COL_IDS);
     return new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
   } catch {
     return new Set(COL_DEFS.filter((c) => !c.defaultVisible).map((c) => c.id));
@@ -498,12 +479,22 @@ function applyColConfig(defs: ColDef[]): ColDef[] {
       })
       .sort((a, b) => (resolved.get(a.id)!.order ?? 9999) - (resolved.get(b.id)!.order ?? 9999));
 
-    // Append COL_DEFs not in the saved config (new columns added after config was saved).
-    // These will be hidden by loadHidden / refresh(true), but visible in the settings panel.
+    // Insert new alloc cols (N/O/P/Q) not yet in the saved config at their natural COL_DEFS position.
     const configuredIds = new Set(configuredDefs.map(d => d.id));
-    const unconfiguredDefs = defs.filter(d => !configuredIds.has(d.id));
+    const newCols = defs.filter(d => ALLOC_NEW_COL_IDS.has(d.id) && !configuredIds.has(d.id));
+    if (newCols.length === 0) return configuredDefs;
 
-    return [...configuredDefs, ...unconfiguredDefs];
+    const defsIndexMap = new Map(defs.map((d, i) => [d.id, i]));
+    const result = [...configuredDefs];
+    for (const newDef of newCols) {  // newCols is in COL_DEFS order (from defs.filter)
+      const newIdx = defsIndexMap.get(newDef.id) ?? 9999;
+      let insertAt = 0;
+      for (let i = 0; i < result.length; i++) {
+        if ((defsIndexMap.get(result[i].id) ?? 0) < newIdx) insertAt = i + 1;
+      }
+      result.splice(insertAt, 0, newDef);
+    }
+    return result;
   } catch {
     return defs;
   }
@@ -557,21 +548,14 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
     const refresh = (resetHidden: boolean) => {
       setActiveDefs(applyColConfig(COL_DEFS));
       if (resetHidden) {
-        // Configured cols become visible; new cols not in the config stay hidden
-        try {
-          const cfgStr = localStorage.getItem(COL_CONFIG_KEY);
-          if (cfgStr) {
-            const cfg: ColConfig[] = JSON.parse(cfgStr);
-            const configuredIds = resolveConfiguredIds(cfg, COL_DEFS);
-            const toHide = new Set(COL_DEFS.filter(d => !configuredIds.has(d.id)).map(d => d.id));
-            setHiddenCols(toHide);
-            if (toHide.size > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(toHide)));
-            else localStorage.removeItem(STORAGE_KEY);
-            return;
-          }
-        } catch { /* fall through */ }
-        setHiddenCols(new Set());
-        localStorage.removeItem(STORAGE_KEY);
+        // Configured cols become visible; new alloc cols (N/O/P/Q) start hidden until user enables
+        if (localStorage.getItem(COL_CONFIG_KEY)) {
+          setHiddenCols(new Set(ALLOC_NEW_COL_IDS));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ALLOC_NEW_COL_IDS)));
+        } else {
+          setHiddenCols(new Set());
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
     };
     // cross-tab: storage event fires in THIS tab when ANOTHER tab writes localStorage
