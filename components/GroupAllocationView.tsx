@@ -484,7 +484,8 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
         const rcEntry = facilityNoKey ? roomChargeDb?.[facilityNoKey] : null;
         const mrEntry = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
 
-        // allocationDb (積算シート) takes priority over 別紙1-1/1-2
+        // allocationDb (積算シート) takes priority over 別紙1-1/1-2.
+        // If allocationDb is loaded but this hotel is not in it → show 0 (not fallback).
         let roomActualExcel: number | null = null;
         let funcActualExcel: number | null = null;
         if (allocEntry) {
@@ -496,7 +497,8 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
             roomActualExcel = ((allocEntry.asia?.roomTotal ?? 0) + (allocEntry.para?.roomTotal ?? 0)) || null;
             funcActualExcel = ((allocEntry.asia?.funcTotal ?? 0) + (allocEntry.para?.funcTotal ?? 0)) || null;
           }
-        } else {
+        } else if (!allocationDb) {
+          // No 積算シート uploaded — fall back to 別紙1-1/1-2
           if (rcEntry) {
             if (isAsia) roomActualExcel = rcEntry.asia?.totalCostTax ?? rcEntry.asia?.totalCost ?? null;
             else if (isPara) roomActualExcel = rcEntry.para?.totalCostTax ?? rcEntry.para?.totalCost ?? null;
@@ -689,7 +691,8 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                   let funcActualExcel: number | null = null;
                   let dailyFuncExcel: number | null = null;
 
-                  // allocationDb (積算シート) takes priority over 別紙1-1/1-2
+                  // allocationDb (積算シート) takes priority over 別紙1-1/1-2.
+                  // If allocationDb is loaded but this hotel is not in it → show 0 (not fallback).
                   if (allocEntry) {
                     const sec = isAsia ? allocEntry.asia : isPara ? allocEntry.para : null;
                     if (sec) {
@@ -701,7 +704,8 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                       roomActualExcel = ((allocEntry.asia?.roomTotal ?? 0) + (allocEntry.para?.roomTotal ?? 0)) || null;
                       funcActualExcel = ((allocEntry.asia?.funcTotal ?? 0) + (allocEntry.para?.funcTotal ?? 0)) || null;
                     }
-                  } else {
+                  } else if (!allocationDb) {
+                    // No 積算シート uploaded — fall back to 別紙1-1/1-2
                     if (rcEntry) {
                       const sec = isAsia ? rcEntry.asia : isPara ? rcEntry.para : null;
                       if (sec) {
