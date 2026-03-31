@@ -516,6 +516,7 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
   const panelRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+  const csvImportRef = useRef<HTMLInputElement>(null);
 
   // Sync top ↔ table scroll
   const syncFromTop = () => {
@@ -675,6 +676,172 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
     return map;
   }, [activeDefs]);
 
+  const handleExportCsv = () => {
+    const visibleCols = activeDefs.filter(c => !hiddenCols.has(c.id));
+    const header = ['施設番号', '施設名', ...visibleCols.map(c => c.label.replace(/\n/g, ' '))];
+
+    const dataRows = groupHotels.map((h) => {
+      const facilityNoKey = h.facilityNo ? String(parseInt(h.facilityNo, 10)) : null;
+      const allocEntry = facilityNoKey ? allocationDb?.[facilityNoKey] : null;
+      const rcEntry    = facilityNoKey ? roomChargeDb?.[facilityNoKey]  : null;
+      const mrEntry    = facilityNoKey ? meetingRoomDb?.[facilityNoKey] : null;
+      const isAsia = selectedGroup.startsWith("アジア");
+      const isPara = selectedGroup.startsWith("パラ");
+
+      const sec = allocEntry ? (isAsia ? allocEntry.asia : isPara ? allocEntry.para : null) : null;
+
+      let roomActualExcel: number | null = null;
+      let funcActualExcel: number | null = null;
+      let dailyRoomExcel: number | null = null;
+      let dailyFuncExcel: number | null = null;
+
+      if (allocEntry) {
+        if (sec) {
+          roomActualExcel = sec.roomTotal;
+          dailyRoomExcel = sec.dailyRoom;
+          funcActualExcel = sec.funcTotal;
+          dailyFuncExcel = sec.dailyFunc;
+        }
+      } else if (!allocationDb) {
+        if (rcEntry) {
+          const rcSec = isAsia ? rcEntry.asia : isPara ? rcEntry.para : null;
+          if (rcSec) { roomActualExcel = rcSec.totalCostTax ?? rcSec.totalCost ?? null; dailyRoomExcel = rcSec.dailyCostTax ?? rcSec.dailyCost ?? null; }
+        }
+        if (mrEntry) {
+          const mrSec = isAsia ? mrEntry.asia : isPara ? mrEntry.para : null;
+          if (mrSec) { funcActualExcel = mrSec.totalCostTax ?? mrSec.totalCost ?? null; dailyFuncExcel = mrSec.dailyCostTax ?? mrSec.dailyCost ?? null; }
+        }
+      }
+
+      const rc = (h.costItems ?? []).filter(i => i.category === "客室確保費");
+      const fc = (h.costItems ?? []).filter(i => i.category === "会議室等確保費");
+      const facilityTotal = sec?.facilityTotal ?? null;
+
+      const ex: Extra = {
+        nights: nightsBetween(h.contractStartDate, h.contractEndDate),
+        roomBudget: rc.reduce((s, i) => s + i.budgetAmount, 0),
+        roomActual: rc.reduce((s, i) => s + i.actualAmount, 0),
+        funcBudget: fc.reduce((s, i) => s + i.budgetAmount, 0),
+        roomActualExcel, funcActualExcel, dailyRoomExcel, dailyFuncExcel, facilityTotal,
+        allocStartDate: sec?.startDate ?? null,
+        allocEndDate: sec?.endDate ?? null,
+        allocNights: sec?.nights ?? null,
+        extendedNights: sec?.extendedNights ?? null,
+        bathTaxAlloc: sec?.bathTax ?? null,
+        doorRemoval: sec?.doorRemoval ?? null,
+        businessComp: sec?.businessComp ?? null,
+        cleanVenueMachine: sec?.cleanVenueMachine ?? null,
+        cleanVenueTenant: sec?.cleanVenueTenant ?? null,
+        cancelPolicyAmount: sec?.cancelPolicyAmount ?? null,
+        mealBreakfastAddon: sec?.mealBreakfastAddon ?? null,
+        mealTotalNormal: sec?.mealTotalNormal ?? null,
+        mealTotalHalal: sec?.mealTotalHalal ?? null,
+        grabAndGoTotal: sec?.grabAndGoTotal ?? null,
+        mealPriceNormal: sec?.mealPriceNormal ?? null,
+        mealPriceHalal: sec?.mealPriceHalal ?? null,
+        grabAndGoPrice: sec?.grabAndGoPrice ?? null,
+      };
+
+      const cells = visibleCols.map(col => {
+        const val = col.render(h, ex);
+        const str = typeof val === 'string' ? val : (val == null ? '' : String(val));
+        return `"${str.replace(/"/g, '""')}"`;
+      });
+      return [`"${h.facilityNo ?? ''}"`, `"${h.name}"`, ...cells].join(',');
+    });
+
+    const bom = '\uFEFF';
+    const csv = bom + [header.map(h => `"${h.replace(/"/g, '""')}"`).join(','), ...dataRows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedGroup}_配宿積算.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = (ev.target?.result as string).replace(/^\uFEFF/, '');
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) return;
+
+        const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+        const facilityNoIdx = headers.findIndex(h => h === '施設番号');
+        const startDateIdx = headers.findIndex(h => h.includes('宿泊確保開始') || h === 'CI');
+        const endDateIdx = headers.findIndex(h => h.includes('宿泊確保終了') || h === 'CO');
+        const nightsIdx = headers.findIndex(h => h.includes('確保') && h.includes('泊数'));
+        const roomTotalIdx = headers.findIndex(h => h.includes('客室確保費') && h.includes('合計'));
+        const funcTotalIdx = headers.findIndex(h => h.includes('会議室') && h.includes('合計'));
+        const mealIdx = headers.findIndex(h => h.includes('朝食加算'));
+        const doorIdx = headers.findIndex(h => h.includes('扉外し'));
+        const bizIdx = headers.findIndex(h => h.includes('営業補償等'));
+        const cvMachineIdx = headers.findIndex(h => h.includes('自動販売機'));
+        const cvTenantIdx = headers.findIndex(h => h.includes('テナント'));
+        const cancelIdx = headers.findIndex(h => h.includes('キャンセル'));
+
+        const parseCell = (row: string[], idx: number): string =>
+          idx >= 0 ? row[idx]?.replace(/^"|"$/g, '').trim() ?? '' : '';
+        const parseNum = (row: string[], idx: number): number | null => {
+          const s = parseCell(row, idx).replace(/[¥,—\s]/g, '');
+          const n = parseFloat(s);
+          return isNaN(n) ? null : n;
+        };
+        const parseDate = (s: string): string | null => {
+          if (!s || s === '—') return null;
+          const m = s.match(/(\d+)\/(\d+)/);
+          if (m) return `2026-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+          if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+          return null;
+        };
+
+        const isAsia = selectedGroup.startsWith("アジア");
+        const isPara = selectedGroup.startsWith("パラ");
+        const event: 'asia' | 'para' | null = isAsia ? 'asia' : isPara ? 'para' : null;
+        if (!event) { alert('選手団・パラ選手団以外はインポートできません'); return; }
+
+        const stored = localStorage.getItem('budget-allocation-v1');
+        const db = stored ? JSON.parse(stored) : {};
+
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split(',');
+          const facilityNo = parseCell(row, facilityNoIdx);
+          if (!facilityNo) continue;
+          const key = String(parseInt(facilityNo, 10));
+          if (!db[key]) db[key] = { hotelName: '', asia: null, para: null };
+          const existing = db[key][event] ?? {};
+          db[key][event] = {
+            ...existing,
+            ...(startDateIdx >= 0 ? { startDate: parseDate(parseCell(row, startDateIdx)) } : {}),
+            ...(endDateIdx >= 0 ? { endDate: parseDate(parseCell(row, endDateIdx)) } : {}),
+            ...(nightsIdx >= 0 ? { nights: parseNum(row, nightsIdx) } : {}),
+            ...(roomTotalIdx >= 0 ? { roomTotal: parseNum(row, roomTotalIdx) } : {}),
+            ...(funcTotalIdx >= 0 ? { funcTotal: parseNum(row, funcTotalIdx) } : {}),
+            ...(mealIdx >= 0 ? { mealBreakfastAddon: parseNum(row, mealIdx) } : {}),
+            ...(doorIdx >= 0 ? { doorRemoval: parseNum(row, doorIdx) } : {}),
+            ...(bizIdx >= 0 ? { businessComp: parseNum(row, bizIdx) } : {}),
+            ...(cvMachineIdx >= 0 ? { cleanVenueMachine: parseNum(row, cvMachineIdx) } : {}),
+            ...(cvTenantIdx >= 0 ? { cleanVenueTenant: parseNum(row, cvTenantIdx) } : {}),
+            ...(cancelIdx >= 0 ? { cancelPolicyAmount: parseNum(row, cancelIdx) } : {}),
+          };
+        }
+
+        localStorage.setItem('budget-allocation-v1', JSON.stringify(db));
+        window.dispatchEvent(new StorageEvent('storage', { key: 'budget-allocation-v1', newValue: JSON.stringify(db) }));
+        alert('インポートが完了しました');
+      } catch (err) {
+        alert('CSVの読み込みに失敗しました: ' + String(err));
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file, 'utf-8');
+  };
+
   return (
     <div className="space-y-4">
       {/* グループ選択 */}
@@ -775,6 +942,19 @@ export default function GroupAllocationView({ hotels, roomChargeDb, meetingRoomD
                 </div>
               )}
             </div>
+            <button
+              onClick={handleExportCsv}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
+            >
+              ↓ CSV出力
+            </button>
+            <button
+              onClick={() => csvImportRef.current?.click()}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
+            >
+              ↑ CSVインポート
+            </button>
+            <input ref={csvImportRef} type="file" accept=".csv" className="hidden" onChange={handleImportCsv} />
           </div>
         </div>
 
