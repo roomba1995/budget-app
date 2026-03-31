@@ -85,8 +85,22 @@ function toNum(v: unknown): number | null {
 
 function formatDateValue(v: unknown): string | null {
   if (v == null) return null;
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
-  if (typeof v === "string" && v.includes("T")) return v.slice(0, 10);
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    return v.toISOString().slice(0, 10);
+  }
+  if (typeof v === "string") {
+    if (v.includes("T")) return v.slice(0, 10);
+    // e.g. "2026-09-13" already
+    if (/^d{4}-d{2}-d{2}$/.test(v)) return v;
+  }
+  if (typeof v === "number" && !isNaN(v) && v > 0) {
+    // Excel date serial number: days since 1899-12-30
+    const ms = (v - 25569) * 86400 * 1000; // 25569 = Excel serial for 1970-01-01
+    const date = new Date(ms);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString().slice(0, 10);
+  }
   return null;
 }
 
@@ -97,7 +111,7 @@ function normFacilityNo(raw: unknown): string {
   return isNaN(n) ? s : String(n);
 }
 
-// ── main parser ───────────────────────────────────────────────────────────────
+// ── main parser ─────────────────────────────────────────────────��─────────────
 
 function parseSheet(
   rows: unknown[][],
