@@ -8,7 +8,7 @@
  *  11: 客室総計(税込)  12: ファンクション総計(税込)
  *  13: 差額朝食加算  14: ３食合計(通常)  15: ３食合計(ハラル)  16: G&G合計
  *  17: 入湯税  18: 扉外し  19: 営業補償等  20: クリーンベニュー(機器)
- *  21: キャンセルポリシー  22: クリーンベニュー(テナント)
+ *  21: クリーンベニュー(テナント)  22: キャンセルポリシー
  *  23: 施設合計  24: 開始日(Y)  25: 終了日(Z)  26: 確保泊数(AA)  27: 延べ人泊数(AB)
  */
 
@@ -29,8 +29,8 @@ export interface AllocationSection {
   doorRemoval: number | null;        // S col 18 (扉外し)
   businessComp: number | null;       // T col 19 (営業補償等)
   cleanVenueMachine: number | null;  // U col 20 (クリーンベニュー機器)
-  cancelPolicyAmount: number | null; // V col 21 (キャンセルポリシー)
-  cleanVenueTenant: number | null;   // W col 22 (クリーンベニューテナント)
+  cleanVenueTenant: number | null;   // V col 21 (クリーンベニューテナント)
+  cancelPolicyAmount: number | null; // W col 22 (キャンセルポリシー)
   facilityTotal: number | null;      // X col 23
   startDate: string | null;          // Y col 24
   endDate: string | null;            // Z col 25
@@ -146,8 +146,8 @@ function parseSheet(
       doorRemoval: toNum((row as unknown[])[18]),     // S: 扉外し
       businessComp: toNum((row as unknown[])[19]),    // T: 営業補償等
       cleanVenueMachine: toNum((row as unknown[])[20]),  // U: クリーンベニュー機器
-      cancelPolicyAmount: toNum((row as unknown[])[21]), // V: キャンセルポリシー
-      cleanVenueTenant: toNum((row as unknown[])[22]),   // W: クリーンベニューテナント
+      cleanVenueTenant: toNum((row as unknown[])[21]),   // V: クリーンベニューテナント
+      cancelPolicyAmount: toNum((row as unknown[])[22]), // W: キャンセルポリシー
       facilityTotal: toNum((row as unknown[])[23]),
       startDate: formatDateValue((row as unknown[])[24]),
       endDate: formatDateValue((row as unknown[])[25]),
