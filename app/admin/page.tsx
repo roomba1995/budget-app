@@ -389,9 +389,13 @@ export default function AdminPage() {
     try {
       const { parseBudgetAllocationFromFile } = await import("@/lib/parseBudgetAllocation");
       const result = await parseBudgetAllocationFromFile(file, overrides);
-      localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(result.db));
-      window.dispatchEvent(new StorageEvent("storage", { key: ALLOCATION_STORAGE_KEY, newValue: JSON.stringify(result.db) }));
-      setAllocCount(Object.keys(result.db).length);
+      // Merge with existing localStorage data to preserve manually-entered hotels not in Excel
+      const existingRaw = localStorage.getItem(ALLOCATION_STORAGE_KEY);
+      const existingDb = existingRaw ? JSON.parse(existingRaw) : {};
+      const mergedDb = { ...existingDb, ...result.db };
+      localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(mergedDb));
+      window.dispatchEvent(new StorageEvent("storage", { key: ALLOCATION_STORAGE_KEY, newValue: JSON.stringify(mergedDb) }));
+      setAllocCount(Object.keys(mergedDb).length);
       setAllocUnmatched(result.unmatched);
       const unmatchedCount = result.unmatched.length;
       setAllocMsg(`✓ アジア選手: ${result.asiaCount}施設、パラ選手: ${result.paraCount}施設を保存しました。${unmatchedCount > 0 ? `（未マッチ${unmatchedCount}件 — 下のテーブルで対応施設を選択してください）` : ""}`);
