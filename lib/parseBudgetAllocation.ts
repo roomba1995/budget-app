@@ -156,6 +156,15 @@ function parseSheet(
       extendedNights: toNum((row as unknown[])[27]),
     };
 
+    // Debug: warn when key numeric fields are all null (helps diagnose Excel column layout issues)
+    if (typeof window !== "undefined") {
+      const keyNums = [section.roomTotal, section.funcTotal, section.mealBreakfastAddon, section.dailyRoom];
+      if (keyNums.every(v => v === null)) {
+        console.warn(`[parseBudgetAllocation] row ${i}: all key numeric fields null — hotelName="${hotelName}" facilityNo="${facilityNo}"`);
+        console.warn(`[parseBudgetAllocation] row ${i} raw (cols 0-27):`, (row as unknown[]).slice(0, 28));
+      }
+    }
+
     if (!facilityNo) {
       unmatched.push({ group, no, facilityNo, hotelName, section, reason: "empty_facility_no" });
     } else {
