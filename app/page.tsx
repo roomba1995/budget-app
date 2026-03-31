@@ -222,7 +222,7 @@ export default function Page() {
               active={activeTab === "budget"}
               onClick={() => handleSetActiveTab("budget")}
             >
-              予算サマリー
+              宿泊確保費積算
             </TabButton>
             <TabButton
               active={activeTab === "execution"}

@@ -11,6 +11,7 @@ import {
   formatCurrency,
 } from "@/types";
 import GroupAllocationView from "@/components/GroupAllocationView";
+import BudgetForecastView from "@/components/BudgetForecastView";
 import type { RoomChargesDB } from "@/lib/parseRoomCharges";
 import type { MeetingRoomsDB } from "@/lib/parseMeetingRooms";
 import type { AllocationDB } from "@/lib/parseBudgetAllocation";
@@ -23,12 +24,13 @@ interface Props {
   allocationDb?: AllocationDB | null;
 }
 
-type SubView = "summary" | "allocation";
+type SubView = "forecast" | "summary" | "allocation";
 
 export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb, meetingRoomDb, allocationDb }: Props) {
   const [subView, setSubView] = useState<SubView>(() => {
     if (initialSubView === "allocation") return "allocation";
-    return "summary";
+    if (initialSubView === "summary") return "summary";
+    return "forecast";
   });
 
   const handleSetSubView = (v: SubView) => {
@@ -94,6 +96,16 @@ export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb
       {/* サブナビゲーション */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         <button
+          onClick={() => handleSetSubView("forecast")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            subView === "forecast"
+              ? "bg-white text-gray-800 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          財政見通し積算
+        </button>
+        <button
           onClick={() => handleSetSubView("summary")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             subView === "summary"
@@ -114,6 +126,10 @@ export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb
           グループ別配宿積算
         </button>
       </div>
+
+      {subView === "forecast" && (
+        <BudgetForecastView hotels={hotels} allocationDb={allocationDb} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} />
+      )}
 
       {subView === "allocation" && (
         <GroupAllocationView hotels={hotels} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} allocationDb={allocationDb} />
@@ -165,33 +181,14 @@ export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb
           <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left py-3 px-4 font-medium text-gray-600 w-36">
-                  費目
-                </th>
-                {/* Asia */}
-                <th className="text-right py-3 px-3 font-medium text-orange-600 whitespace-nowrap">
-                  アジア 予算
-                </th>
-                <th className="text-right py-3 px-3 font-medium text-orange-600 whitespace-nowrap">
-                  アジア 実績
-                </th>
-                <th className="text-right py-3 px-3 font-medium text-orange-600 whitespace-nowrap">
-                  アジア 乖離
-                </th>
-                {/* Para */}
-                <th className="text-right py-3 px-3 font-medium text-sky-600 whitespace-nowrap">
-                  パラ 予算
-                </th>
-                <th className="text-right py-3 px-3 font-medium text-sky-600 whitespace-nowrap">
-                  パラ 実績
-                </th>
-                <th className="text-right py-3 px-3 font-medium text-sky-600 whitespace-nowrap">
-                  パラ 乖離
-                </th>
-                {/* Total */}
-                <th className="text-right py-3 px-4 font-medium text-gray-700 whitespace-nowrap">
-                  合計 実績
-                </th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600 w-36">費目</th>
+                <th className="text-right py-3 px-3 font-medium text-orange-600 whitespace-nowrap">アジア 予算</th>
+                <th className="text-right py-3 px-3 font-medium text-orange-600 whitespace-nowrap">アジア 実績</th>
+                <th className="text-right py-3 px-3 font-medium text-orange-600 whitespace-nowrap">アジア 乖離</th>
+                <th className="text-right py-3 px-3 font-medium text-sky-600 whitespace-nowrap">パラ 予算</th>
+                <th className="text-right py-3 px-3 font-medium text-sky-600 whitespace-nowrap">パラ 実績</th>
+                <th className="text-right py-3 px-3 font-medium text-sky-600 whitespace-nowrap">パラ 乖離</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-700 whitespace-nowrap">合計 実績</th>
               </tr>
             </thead>
             <tbody>
@@ -215,16 +212,8 @@ export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-medium ${expanded ? "rotate-90" : ""} inline-block transition-transform`}
-                          >
-                            ▶
-                          </span>
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${CATEGORY_COLORS[row.cat]}`}
-                          >
-                            {row.cat}
-                          </span>
+                          <span className={`text-xs font-medium ${expanded ? "rotate-90" : ""} inline-block transition-transform`}>▶</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${CATEGORY_COLORS[row.cat]}`}>{row.cat}</span>
                         </div>
                       </td>
                       <td className="py-3 px-3 text-right text-gray-500 tabular-nums whitespace-nowrap">
@@ -253,39 +242,26 @@ export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb
                     {/* Detail rows */}
                     {expanded &&
                       allItems.map((item) => {
-                        const hasBreakdown =
-                          item.unitPrice > 0 &&
-                          item.personCount > 0 &&
-                          item.nights > 0;
+                        const hasBreakdown = item.unitPrice > 0 && item.personCount > 0 && item.nights > 0;
                         const iV = calcVariance(item.budgetAmount, item.actualAmount);
                         return (
-                          <tr
-                            key={item.id}
-                            className="border-b border-gray-50 bg-gray-50/60 text-xs"
-                          >
+                          <tr key={item.id} className="border-b border-gray-50 bg-gray-50/60 text-xs">
                             <td className="py-2 pl-10 pr-3" colSpan={1}>
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-xs ${EVENT_COLORS[item.ev]}`}
-                              >
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${EVENT_COLORS[item.ev]}`}>
                                 {EVENT_LABELS[item.ev]}
                               </span>
                             </td>
                             <td className="py-2 px-3 text-gray-500" colSpan={6}>
-                              <span className="font-medium text-gray-600">
-                                {item.hotelName}
-                              </span>
+                              <span className="font-medium text-gray-600">{item.hotelName}</span>
                               {" — "}
                               {item.description}
                               {hasBreakdown && (
                                 <span className="ml-2 text-gray-400">
-                                  （{item.unitPrice.toLocaleString("ja-JP")}円 ×{" "}
-                                  {item.personCount}人 × {item.nights}泊）
+                                  （{item.unitPrice.toLocaleString("ja-JP")}円 × {item.personCount}人 × {item.nights}泊）
                                 </span>
                               )}
                               {item.notes && (
-                                <span className="ml-2 text-amber-600">
-                                  ※{item.notes}
-                                </span>
+                                <span className="ml-2 text-amber-600">※{item.notes}</span>
                               )}
                             </td>
                             <td className={`py-2 px-4 text-right tabular-nums whitespace-nowrap ${iV.className}`}>
@@ -301,27 +277,13 @@ export default function BudgetSummaryView({ hotels, initialSubView, roomChargeDb
             <tfoot>
               <tr className="bg-gray-50 font-semibold text-sm border-t-2 border-gray-200">
                 <td className="py-3 px-4 text-gray-700">合計</td>
-                <td className="py-3 px-3 text-right text-gray-600 tabular-nums whitespace-nowrap">
-                  {formatCurrency(grandAsiaBudget)}
-                </td>
-                <td className="py-3 px-3 text-right text-gray-900 tabular-nums whitespace-nowrap">
-                  {formatCurrency(grandAsiaActual)}
-                </td>
-                <td className={`py-3 px-3 text-right tabular-nums whitespace-nowrap ${calcVariance(grandAsiaBudget, grandAsiaActual).className}`}>
-                  {calcVariance(grandAsiaBudget, grandAsiaActual).text}
-                </td>
-                <td className="py-3 px-3 text-right text-gray-600 tabular-nums whitespace-nowrap">
-                  {formatCurrency(grandParaBudget)}
-                </td>
-                <td className="py-3 px-3 text-right text-gray-900 tabular-nums whitespace-nowrap">
-                  {formatCurrency(grandParaActual)}
-                </td>
-                <td className={`py-3 px-3 text-right tabular-nums whitespace-nowrap ${calcVariance(grandParaBudget, grandParaActual).className}`}>
-                  {calcVariance(grandParaBudget, grandParaActual).text}
-                </td>
-                <td className={`py-3 px-4 text-right tabular-nums whitespace-nowrap ${calcVariance(grandBudget, grandActual).className}`}>
-                  {formatCurrency(grandActual)}
-                </td>
+                <td className="py-3 px-3 text-right text-gray-600 tabular-nums whitespace-nowrap">{formatCurrency(grandAsiaBudget)}</td>
+                <td className="py-3 px-3 text-right text-gray-900 tabular-nums whitespace-nowrap">{formatCurrency(grandAsiaActual)}</td>
+                <td className={`py-3 px-3 text-right tabular-nums whitespace-nowrap ${calcVariance(grandAsiaBudget, grandAsiaActual).className}`}>{calcVariance(grandAsiaBudget, grandAsiaActual).text}</td>
+                <td className="py-3 px-3 text-right text-gray-600 tabular-nums whitespace-nowrap">{formatCurrency(grandParaBudget)}</td>
+                <td className="py-3 px-3 text-right text-gray-900 tabular-nums whitespace-nowrap">{formatCurrency(grandParaActual)}</td>
+                <td className={`py-3 px-3 text-right tabular-nums whitespace-nowrap ${calcVariance(grandParaBudget, grandParaActual).className}`}>{calcVariance(grandParaBudget, grandParaActual).text}</td>
+                <td className={`py-3 px-4 text-right tabular-nums whitespace-nowrap ${calcVariance(grandBudget, grandActual).className}`}>{formatCurrency(grandActual)}</td>
               </tr>
             </tfoot>
           </table>
