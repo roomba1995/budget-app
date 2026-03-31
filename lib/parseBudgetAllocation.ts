@@ -123,9 +123,10 @@ function parseSheet(
   for (let i = 4; i < rows.length; i++) {
     const row = rows[i] ?? [];
     const colA = (row as unknown[])[0];
-    if (colA == null || typeof colA !== "number" || !Number.isInteger(colA) || colA <= 0) continue;
+    const colANum = typeof colA === "number" ? colA : (typeof colA === "string" ? Number(colA.trim()) : NaN);
+    if (!Number.isFinite(colANum) || !Number.isInteger(colANum) || colANum <= 0) continue;
 
-    const no = colA;
+    const no = colANum;
     const facilityNo = normFacilityNo((row as unknown[])[1]);
     const hotelName = cellStr((row as unknown[])[2]);
 
