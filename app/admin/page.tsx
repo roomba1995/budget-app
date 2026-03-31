@@ -408,6 +408,9 @@ export default function AdminPage() {
         if (!ex) { mergedDb[key] = newEntry; }
         else { mergedDb[key] = { hotelName: newEntry.hotelName || ex.hotelName, asia: mergeSection(ex.asia, newEntry.asia), para: mergeSection(ex.para, newEntry.para) }; }
       }
+      const entry20 = mergedDb["20"] as { asia: Record<string,unknown> | null } | undefined;
+      console.log("[adminDebug] result.db[20] roomTotal:", (result.db["20"]?.asia as Record<string,unknown>|null|undefined)?.["roomTotal"]);
+      console.log("[adminDebug] mergedDb[20] roomTotal:", entry20?.asia?.["roomTotal"]);
       localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(mergedDb));
       window.dispatchEvent(new StorageEvent("storage", { key: ALLOCATION_STORAGE_KEY, newValue: JSON.stringify(mergedDb) }));
       setAllocCount(Object.keys(mergedDb).length);
