@@ -389,10 +389,25 @@ export default function AdminPage() {
     try {
       const { parseBudgetAllocationFromFile } = await import("@/lib/parseBudgetAllocation");
       const result = await parseBudgetAllocationFromFile(file, overrides);
-      // Merge with existing localStorage data to preserve manually-entered hotels not in Excel
+      // Deep merge with existing localStorage data:
+      // - New hotels from Excel are added
+      // - Existing hotels get field-level merge (null values from Excel do NOT overwrite existing non-null values)
       const existingRaw = localStorage.getItem(ALLOCATION_STORAGE_KEY);
       const existingDb = existingRaw ? JSON.parse(existingRaw) : {};
-      const mergedDb = { ...existingDb, ...result.db };
+      type Sec = Record<string, unknown> | null;
+      const mergeSection = (ex: Sec, inc: Sec): Sec => {
+        if (!inc) return ex;
+        if (!ex) return inc;
+        const out: Record<string, unknown> = { ...ex };
+        for (const k of Object.keys(inc)) { if (inc[k] !== null) out[k] = inc[k]; }
+        return out;
+      };
+      const mergedDb: Record<string, unknown> = { ...existingDb };
+      for (const [key, newEntry] of Object.entries(result.db) as [string, { hotelName: string; asia: Sec; para: Sec }][]) {
+        const ex = (existingDb as Record<string, { hotelName: string; asia: Sec; para: Sec }>)[key];
+        if (!ex) { mergedDb[key] = newEntry; }
+        else { mergedDb[key] = { hotelName: newEntry.hotelName || ex.hotelName, asia: mergeSection(ex.asia, newEntry.asia), para: mergeSection(ex.para, newEntry.para) }; }
+      }
       localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(mergedDb));
       window.dispatchEvent(new StorageEvent("storage", { key: ALLOCATION_STORAGE_KEY, newValue: JSON.stringify(mergedDb) }));
       setAllocCount(Object.keys(mergedDb).length);
