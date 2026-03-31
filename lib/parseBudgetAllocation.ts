@@ -156,12 +156,17 @@ function parseSheet(
       extendedNights: toNum((row as unknown[])[27]),
     };
 
-    // Debug: warn when key numeric fields are all null (helps diagnose Excel column layout issues)
+    // Debug: log rows where all numeric fields are null
     if (typeof window !== "undefined") {
       const keyNums = [section.roomTotal, section.funcTotal, section.mealBreakfastAddon, section.dailyRoom];
       if (keyNums.every(v => v === null)) {
         console.warn(`[parseBudgetAllocation] row ${i}: all key numeric fields null — hotelName="${hotelName}" facilityNo="${facilityNo}"`);
         console.warn(`[parseBudgetAllocation] row ${i} raw (cols 0-27):`, (row as unknown[]).slice(0, 28));
+      }
+      // Debug: always log facilityNo=20 row to diagnose あいち健康の森
+      if (facilityNo === "20") {
+        console.log(`[parseBudgetAllocation] facilityNo=20 found at row ${i}: roomTotal=${section.roomTotal} funcTotal=${section.funcTotal} mealBreakfastAddon=${section.mealBreakfastAddon}`);
+        console.log(`[parseBudgetAllocation] facilityNo=20 raw (cols 0-27):`, (row as unknown[]).slice(0, 28));
       }
     }
 
