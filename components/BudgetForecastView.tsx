@@ -38,14 +38,14 @@ interface RowData {
 // Hardcoded Excel values from 財政見通し積算 (全SH全項目統合版）
 // Rows 27-30 (アジア ファミリー/技術役員/スポンサー/メディア) and 32-35 (パラ ファミリー/技術役員/スポンサー/メディア)
 const EXCEL_ROWS: Record<string, Omit<RowData, "label" | "colorClass">> = {
-  "アジアファミリー":  { roomTotal: 2204156998,    funcTotal: 1133891586,   mealTotal: 453261666,  businessComp: 35875904.9, cleanVenueMachine: null, cleanVenueTenant: null, laundry: 74703200,  total: 3901889354.9 },
-  "アジア技術役員":   { roomTotal: 1724607631,    funcTotal: 760304013.7,  mealTotal: 726706750,  businessComp: 0,          cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 3211618394.7 },
-  "アジアスポンサー": { roomTotal: 1285487677.08, funcTotal: 0,            mealTotal: 0,          businessComp: 0,          cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 1285487677.08 },
-  "アジアメディア":   { roomTotal: 2656553304,    funcTotal: 0,            mealTotal: 0,          businessComp: 0,          cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 2656553304 },
-  "パラファミリー":   { roomTotal: 472117800,     funcTotal: 288657600,    mealTotal: 72406400,   businessComp: 792000,     cleanVenueMachine: null, cleanVenueTenant: null, laundry: 20944000,  total: 854917800 },
-  "パラ技術役員":    { roomTotal: 344907436,     funcTotal: 367732929.1,  mealTotal: 195448750,  businessComp: 0,          cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 908089115.1 },
-  "パラスポンサー":  { roomTotal: 837038639.34,  funcTotal: 0,            mealTotal: 0,          businessComp: 0,          cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 837038639.34 },
-  "パラメディア":    { roomTotal: 402289600.8,   funcTotal: 0,            mealTotal: 0,          businessComp: 0,          cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 402289600.8 },
+  "アジアファミリー":  { roomTotal: 2204156998, funcTotal: 1133891586, mealTotal: 453261666, businessComp: 35875905, cleanVenueMachine: null, cleanVenueTenant: null, laundry: 74703200,  total: 3901889355 },
+  "アジア技術役員":   { roomTotal: 1724607631, funcTotal: 760304014,  mealTotal: 726706750,  businessComp: 0,        cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 3211618395 },
+  "アジアスポンサー": { roomTotal: 1285487677, funcTotal: 0,           mealTotal: 0,          businessComp: 0,        cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 1285487677 },
+  "アジアメディア":   { roomTotal: 2656553304, funcTotal: 0,           mealTotal: 0,          businessComp: 0,        cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 2656553304 },
+  "パラファミリー":   { roomTotal: 472117800,  funcTotal: 288657600,   mealTotal: 72406400,   businessComp: 792000,   cleanVenueMachine: null, cleanVenueTenant: null, laundry: 20944000,  total: 854917800 },
+  "パラ技術役員":    { roomTotal: 344907436,  funcTotal: 367732929,   mealTotal: 195448750,  businessComp: 0,        cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 908089115 },
+  "パラスポンサー":  { roomTotal: 837038639,  funcTotal: 0,           mealTotal: 0,          businessComp: 0,        cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 837038639 },
+  "パラメディア":    { roomTotal: 402289601,  funcTotal: 0,           mealTotal: 0,          businessComp: 0,        cleanVenueMachine: null, cleanVenueTenant: null, laundry: null,      total: 402289601 },
 };
 
 function calcAthleteGroup(
@@ -102,7 +102,7 @@ function calcAthleteGroup(
     // C列: 客室金額合計 = 客室確保費合計 + 入湯税・宿泊税 + (特定ホテルの朝食加算)
     roomTotal += roomVal + bathTax + (isSpecial ? breakfast : 0);
 
-    // D列: ファンクション金額合計 = 会議室等確保費合計のみ（キャンセルポリシーは含まない）
+    // D列: ファ��クション金額合計 = 会議室等確保費合計のみ（キャンセルポリシーは含まない）
     funcTotal += funcVal;
 
     // E列: 食費合計 = 朝食加算 (特定ホテル除く)
