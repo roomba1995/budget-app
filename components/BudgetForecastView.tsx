@@ -93,7 +93,8 @@ function calcAthleteGroup(
     const funcVal   = funcActualExcel ?? funcBudget;
     const bathTax   = sec?.bathTax ?? 0;
     const breakfast = sec?.mealBreakfastAddon ?? 0;
-    const bizComp   = sec?.businessComp ?? 0;
+    const bizComp    = sec?.businessComp ?? 0;
+    const doorRem    = sec?.doorRemoval ?? 0;
     const cvMachine = sec?.cleanVenueMachine ?? 0;
     const cvTenant  = sec?.cleanVenueTenant ?? 0;
 
@@ -108,8 +109,8 @@ function calcAthleteGroup(
     // E列: 食費合計 = 朝食加算 (特定ホテル除く)
     mealTotal += isSpecial ? 0 : breakfast;
 
-    // F列: 営業補償等
-    businessComp += bizComp;
+    // F列: その他（営業補償等）= 扉外し + 営業補償等
+    businessComp += doorRem + bizComp;
 
     // G列: クリーンベニュー 自販機
     cleanVenueMachine += cvMachine;
