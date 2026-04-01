@@ -205,6 +205,11 @@ export async function parseBudgetAllocationFromFile(
   const asiaResult = parseSheet(sheetRows(ASIA_SHEET), "asia");
   const paraResult = parseSheet(sheetRows(PARA_SHEET), "para");
 
+  if (typeof window !== "undefined") {
+    console.log("[paraDebug] パラシート matched facilityNos:", paraResult.matched.map(r => `${r.facilityNo}:${r.hotelName}`));
+    console.log("[paraDebug] パラシート unmatched:", paraResult.unmatched.map(r => `facilityNo="${r.facilityNo}" name="${r.hotelName}"`));
+  }
+
   const db: AllocationDB = {};
 
   function applySection(
