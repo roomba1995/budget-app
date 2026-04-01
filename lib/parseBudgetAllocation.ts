@@ -132,14 +132,7 @@ function parseSheet(
     const row = rows[i] ?? [];
     const colA = (row as unknown[])[0];
     const colANum = typeof colA === "number" ? colA : (typeof colA === "string" ? Number(colA.trim()) : NaN);
-    if (!Number.isFinite(colANum) || !Number.isInteger(colANum) || colANum <= 0) {
-      // Debug: log skipped rows that have a facilityNo in col B (to catch hotels being skipped)
-      const colB = (row as unknown[])[1];
-      if (typeof window !== "undefined" && colB !== null && colB !== undefined && colB !== "") {
-        console.warn(`[parseSheet skip][${group}] row ${i}: colA=${JSON.stringify(colA)} colB=${JSON.stringify(colB)} colC=${JSON.stringify((row as unknown[])[2])}`);
-      }
-      continue;
-    }
+    if (!Number.isFinite(colANum) || !Number.isInteger(colANum) || colANum <= 0) continue;
 
     const no = colANum;
     const facilityNo = normFacilityNo((row as unknown[])[1]);
@@ -170,20 +163,6 @@ function parseSheet(
       nights: toNum((row as unknown[])[26]),
       extendedNights: toNum((row as unknown[])[27]),
     };
-
-    // Debug: log rows where all numeric fields are null
-    if (typeof window !== "undefined") {
-      const keyNums = [section.roomTotal, section.funcTotal, section.mealBreakfastAddon, section.dailyRoom];
-      if (keyNums.every(v => v === null)) {
-        console.warn(`[parseBudgetAllocation] row ${i}: all key numeric fields null — hotelName="${hotelName}" facilityNo="${facilityNo}"`);
-        console.warn(`[parseBudgetAllocation] row ${i} raw (cols 0-27):`, (row as unknown[]).slice(0, 28));
-      }
-      // Debug: always log facilityNo=20 row to diagnose あいち健康の森
-      if (facilityNo === "20") {
-        console.log(`[parseBudgetAllocation] facilityNo=20 found at row ${i}: roomTotal=${section.roomTotal} funcTotal=${section.funcTotal} mealBreakfastAddon=${section.mealBreakfastAddon}`);
-        console.log(`[parseBudgetAllocation] facilityNo=20 raw (cols 0-27):`, (row as unknown[]).slice(0, 28));
-      }
-    }
 
     if (!facilityNo) {
       unmatched.push({ group, no, facilityNo, hotelName, section, reason: "empty_facility_no" });
@@ -217,21 +196,8 @@ export async function parseBudgetAllocationFromFile(
     return utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null }) as unknown[][];
   }
 
-  const paraRows = sheetRows(PARA_SHEET);
-  if (typeof window !== "undefined") {
-    console.log("[paraRaw] パラシート行数:", paraRows.length);
-    for (let ri = 0; ri < Math.min(10, paraRows.length); ri++) {
-      const r = paraRows[ri] ?? [];
-      console.log(`[paraRaw] row[${ri}]: colA=${JSON.stringify(r[0])} colB=${JSON.stringify(r[1])} colC=${JSON.stringify(r[2])}`);
-    }
-  }
   const asiaResult = parseSheet(sheetRows(ASIA_SHEET), "asia");
-  const paraResult = parseSheet(paraRows, "para");
-
-  if (typeof window !== "undefined") {
-    console.log("[paraDebug] パラシート matched facilityNos:", paraResult.matched.map(r => `${r.facilityNo}:${r.hotelName}`));
-    console.log("[paraDebug] パラシート unmatched:", paraResult.unmatched.map(r => `facilityNo="${r.facilityNo}" name="${r.hotelName}"`));
-  }
+  const paraResult = parseSheet(sheetRows(PARA_SHEET), "para");
 
   const db: AllocationDB = {};
 
