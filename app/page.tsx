@@ -47,7 +47,7 @@ function LandingPage() {
         <p className="text-gray-500">表示するデータの種類を選択してください</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
-        <a
+        <Link
           href="/?mode=budget"
           className="flex-1 bg-white border-2 border-blue-200 hover:border-blue-400 rounded-2xl p-8 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group"
         >
@@ -55,8 +55,8 @@ function LandingPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-700">予算金額</h2>
           <p className="text-sm text-gray-500">積算シートに基づく予算額。<br/>基本的に変更されない確定値。</p>
           <div className="mt-4 text-xs text-gray-400">総予算額: ¥28,929,665,120</div>
-        </a>
-        <a
+        </Link>
+        <Link
           href="/?mode=current"
           className="flex-1 bg-white border-2 border-green-200 hover:border-green-400 rounded-2xl p-8 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group"
         >
@@ -64,24 +64,34 @@ function LandingPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-green-700">現状金額</h2>
           <p className="text-sm text-gray-500">現在の最新状況を反映した金額。<br/>随時更新可能。</p>
           <div className="mt-4 text-xs text-gray-400">最新データをアップロードして管理</div>
-        </a>
+        </Link>
       </div>
     </div>
   );
 }
 
 export default function Page() {
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode | "landing" | null>(null);
 
-  // Read mode from URL on mount
+  // Read mode from URL on mount (client-only, static export)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const m = params.get("mode") as Mode | null;
-    if (m === "budget" || m === "current") setMode(m);
+    if (m === "budget" || m === "current") {
+      setMode(m);
+    } else {
+      setMode("landing");
+    }
   }, []);
 
-  // Show landing if no mode
-  if (mode === null) return <LandingPage />;
+  // null = hydrating, show nothing to prevent flash
+  if (mode === null) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-gray-400 text-lg">読み込み中...</div>
+    </div>
+  );
+
+  if (mode === "landing") return <LandingPage />;
 
   return <AppPage mode={mode} />;
 }
