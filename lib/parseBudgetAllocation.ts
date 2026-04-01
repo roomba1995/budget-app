@@ -120,7 +120,15 @@ function parseSheet(
   const matched: Array<{ facilityNo: string; hotelName: string; section: AllocationSection }> = [];
   const unmatched: UnmatchedRow[] = [];
 
-  for (let i = 4; i < rows.length; i++) {
+  // Auto-detect start row: find header row where colA === "通し番号", then start from next row.
+  // Fallback to row 4 for backward compatibility.
+  let startRow = 4;
+  for (let h = 0; h < Math.min(10, rows.length); h++) {
+    const hRow = rows[h] ?? [];
+    if (cellStr((hRow as unknown[])[0]) === "通し番号") { startRow = h + 1; break; }
+  }
+
+  for (let i = startRow; i < rows.length; i++) {
     const row = rows[i] ?? [];
     const colA = (row as unknown[])[0];
     const colANum = typeof colA === "number" ? colA : (typeof colA === "string" ? Number(colA.trim()) : NaN);
