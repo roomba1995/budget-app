@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Hotel, CostItem } from "@/types";
 
-const STORAGE_KEY = "hotel-budget-data-v2";
+const DEFAULT_STORAGE_KEY = "hotel-budget-data-v2";
 
 function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -67,25 +67,26 @@ export function mergeHotels(existing: Hotel[], incoming: Hotel[]): MergeResult {
   return { result, alerts, addedCount, updatedCount };
 }
 
-export function useHotels() {
+export function useHotels(storageKey: string = DEFAULT_STORAGE_KEY) {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(storageKey);
       setHotels(stored ? JSON.parse(stored) : []);
     } catch {
       setHotels([]);
     }
     setInitialized(true);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
 
   useEffect(() => {
     if (initialized) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(hotels));
+      localStorage.setItem(storageKey, JSON.stringify(hotels));
     }
-  }, [hotels, initialized]);
+  }, [hotels, initialized, storageKey]);
 
   const addHotel = useCallback(
     (data: Omit<Hotel, "id" | "costItems">): string => {
