@@ -209,8 +209,16 @@ export async function parseBudgetAllocationFromFile(
     return utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null }) as unknown[][];
   }
 
+  const paraRows = sheetRows(PARA_SHEET);
+  if (typeof window !== "undefined") {
+    console.log("[paraRaw] パラシート行数:", paraRows.length);
+    for (let ri = 0; ri < Math.min(10, paraRows.length); ri++) {
+      const r = paraRows[ri] ?? [];
+      console.log(`[paraRaw] row[${ri}]: colA=${JSON.stringify(r[0])} colB=${JSON.stringify(r[1])} colC=${JSON.stringify(r[2])}`);
+    }
+  }
   const asiaResult = parseSheet(sheetRows(ASIA_SHEET), "asia");
-  const paraResult = parseSheet(sheetRows(PARA_SHEET), "para");
+  const paraResult = parseSheet(paraRows, "para");
 
   if (typeof window !== "undefined") {
     console.log("[paraDebug] パラシート matched facilityNos:", paraResult.matched.map(r => `${r.facilityNo}:${r.hotelName}`));
