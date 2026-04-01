@@ -901,12 +901,21 @@ export default function HotelDetailClient() {
   );
 }
 
+type Mode = "budget" | "current";
+const HOTEL_STORAGE_KEYS: Record<Mode, { hotels: string; rc: string; mr: string }> = {
+  budget: { hotels: "hotel-budget-data-v2", rc: "room-charges-v2-uploaded", mr: "meeting-rooms-v1-uploaded" },
+  current: { hotels: "current-hotels-v1", rc: "current-rc-v1", mr: "current-mr-v1" },
+};
+
 function HotelDetailInner() {
   const searchParams = useSearchParams();
   const id = searchParams?.get("id") ?? "";
+  const rawMode = searchParams?.get("mode") ?? "budget";
+  const mode: Mode = (rawMode === "current") ? "current" : "budget";
+  const modeKeys = HOTEL_STORAGE_KEYS[mode];
   const router = useRouter();
   const { hotels, initialized, addCostItem, updateCostItem, deleteCostItem, updateHotel } =
-    useHotels();
+    useHotels(modeKeys.hotels);
   const [hotelEditOpen, setHotelEditOpen] = useState(false);
   const [facilityInfoOpen, setFacilityInfoOpen] = useState(false);
   const [functionRoomOpen, setFunctionRoomOpen] = useState(false);
@@ -915,45 +924,53 @@ function HotelDetailInner() {
   const [roomChargeDb, setRoomChargeDb] = useState<RoomChargesDB | null>(null);
   useEffect(() => {
     try {
-      const s = localStorage.getItem(ROOM_CHARGES_STORAGE_KEY);
+      const s = localStorage.getItem(modeKeys.rc);
       if (s) { setRoomChargeDb(JSON.parse(s) as RoomChargesDB); return; }
     } catch { /* ignore */ }
-    fetch("/budget-app/room-charges.json")
-      .then((r) => r.json())
-      .then((data) => setRoomChargeDb(data as RoomChargesDB))
-      .catch(() => {});
-  }, []);
+    if (mode === "budget") {
+      fetch("/budget-app/room-charges.json")
+        .then((r) => r.json())
+        .then((data) => setRoomChargeDb(data as RoomChargesDB))
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === ROOM_CHARGES_STORAGE_KEY && e.newValue) {
+      if (e.key === modeKeys.rc && e.newValue) {
         try { setRoomChargeDb(JSON.parse(e.newValue) as RoomChargesDB); } catch { /* ignore */ }
       }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // ── Meeting room DB (from uploaded Excel or static JSON) ──────────────────
   const [meetingRoomDb, setMeetingRoomDb] = useState<MeetingRoomsDB | null>(null);
   useEffect(() => {
     try {
-      const s = localStorage.getItem(MEETING_ROOMS_STORAGE_KEY);
+      const s = localStorage.getItem(modeKeys.mr);
       if (s) { setMeetingRoomDb(JSON.parse(s) as MeetingRoomsDB); return; }
     } catch { /* ignore */ }
-    fetch("/budget-app/meeting-rooms.json")
-      .then((r) => r.json())
-      .then((data) => setMeetingRoomDb(data as MeetingRoomsDB))
-      .catch(() => {});
-  }, []);
+    if (mode === "budget") {
+      fetch("/budget-app/meeting-rooms.json")
+        .then((r) => r.json())
+        .then((data) => setMeetingRoomDb(data as MeetingRoomsDB))
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === MEETING_ROOMS_STORAGE_KEY && e.newValue) {
+      if (e.key === modeKeys.mr && e.newValue) {
         try { setMeetingRoomDb(JSON.parse(e.newValue) as MeetingRoomsDB); } catch { /* ignore */ }
       }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // ── Meal cost DB (bulk, no static JSON fallback) ───────────────────────────
   const [mealCostDb, setMealCostDb] = useState<MealCostsDB | null>(null);
@@ -1082,7 +1099,7 @@ function HotelDetailInner() {
         <div className="text-red-500 text-lg font-medium">
           ホテルが見つかりませんでした
         </div>
-        <Link href="/" className="text-blue-600 hover:underline text-sm">
+        <Link href={`/?mode=${mode}`} className="text-blue-600 hover:underline text-sm">
           ← メイン画面に戻る
         </Link>
       </div>
@@ -1245,7 +1262,7 @@ function HotelDetailInner() {
           </button>
           <span className="text-gray-200 flex-shrink-0 select-none">|</span>
           <Link
-            href="/"
+            href={`/?mode=${mode}`}
             className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1 flex-shrink-0 transition-colors"
           >
             メイン画面
@@ -1294,7 +1311,7 @@ function HotelDetailInner() {
                       <button
                         key={h.id}
                         onClick={() => {
-                          router.push(`/hotels/detail?id=${h.id}`);
+                          router.push(`/hotels/detail?id=${h.id}&mode=${mode}`);
                           setHotelDropdownOpen(false);
                         }}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors flex items-center gap-2 ${h.id === id ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"}`}
@@ -1313,7 +1330,7 @@ function HotelDetailInner() {
             )}
           </div>
           <Link
-            href="/admin"
+            href={`/admin?mode=${mode}`}
             className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-white flex items-center gap-1.5 flex-shrink-0 transition-colors"
           >
             <span>⚙</span>
