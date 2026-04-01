@@ -195,27 +195,11 @@ export default function BudgetOverallView({ onNavigate }: Props) {
                 <th className="text-right py-3 px-3 font-medium text-gray-800 whitespace-nowrap">
                   全体<br/>合計
                 </th>
-                <th className="py-3 px-3 w-20 text-right font-medium text-gray-400 text-xs">
-                  内示との差
-                </th>
               </tr>
             </thead>
             <tbody>
               {CATEGORIES.map((cat) => {
                 const isExpanded = expanded.has(cat.label);
-                const diff = cat.total - cat.indicatedAmount;
-                const diffStr =
-                  diff === 0
-                    ? "±0"
-                    : diff > 0
-                    ? `+¥${Math.round(diff).toLocaleString()}`
-                    : `-¥${Math.round(Math.abs(diff)).toLocaleString()}`;
-                const diffColor =
-                  diff === 0
-                    ? "text-gray-400"
-                    : diff > 0
-                    ? "text-red-500"
-                    : "text-green-600";
 
                 return (
                   <Fragment key={cat.label}>
@@ -252,9 +236,6 @@ export default function BudgetOverallView({ onNavigate }: Props) {
                       </td>
                       <td className="py-3 px-3 text-right tabular-nums font-medium text-gray-900">
                         {fmt(cat.total)}
-                      </td>
-                      <td className={`py-3 px-3 text-right tabular-nums text-xs ${diffColor}`}>
-                        {diffStr}
                       </td>
                     </tr>
 
@@ -303,7 +284,6 @@ export default function BudgetOverallView({ onNavigate }: Props) {
                           >
                             {fmt(sub.total)}
                           </td>
-                          <td></td>
                         </tr>
                       ))}
                   </Fragment>
@@ -325,20 +305,6 @@ export default function BudgetOverallView({ onNavigate }: Props) {
                 <td className="py-3 px-3 text-right tabular-nums text-gray-900">
                   {fmt(GRAND_TOTAL.total)}
                 </td>
-                <td
-                  className={`py-3 px-3 text-right tabular-nums text-xs ${
-                    GRAND_TOTAL.total - GRAND_TOTAL.indicatedAmount < 0
-                      ? "text-green-600"
-                      : "text-red-500"
-                  }`}
-                >
-                  {(() => {
-                    const d = GRAND_TOTAL.total - GRAND_TOTAL.indicatedAmount;
-                    return d > 0
-                      ? `+¥${Math.round(d).toLocaleString()}`
-                      : `-¥${Math.round(Math.abs(d)).toLocaleString()}`;
-                  })()}
-                </td>
               </tr>
             </tfoot>
           </table>
@@ -347,7 +313,6 @@ export default function BudgetOverallView({ onNavigate }: Props) {
         <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/50">
           <p className="text-xs text-gray-400">
             出典: 読み込み用 20260123 内示額反映 宿泊費積算根拠.xlsx「内示額反映積算（VIL移管反映）」シート B86:P120
-            ／ 内示との差 = 全体合計 − 内示金額（プラスは超過、マイナスは節減）
           </p>
         </div>
       </div>
