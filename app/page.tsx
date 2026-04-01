@@ -19,9 +19,79 @@ import ContractStatusView from "@/components/ContractStatusView";
 import BudgetVersionView from "@/components/BudgetVersionView";
 import MealCategoryView from "@/components/MealCategoryView";
 
+type Mode = "budget" | "current";
 type Tab = "hotels" | "overall" | "budget" | "execution" | "contract" | "version" | "meal";
 
+// ストレージキーをモードに応じて切り替え
+const STORAGE_KEYS = {
+  budget: {
+    hotels: "hotel-budget-data-v2",
+    alloc: ALLOCATION_STORAGE_KEY,
+    rc: "room-charges-v2-uploaded",
+    mr: "meeting-rooms-v1-uploaded",
+  },
+  current: {
+    hotels: "current-hotels-v1",
+    alloc: "current-alloc-v1",
+    rc: "current-rc-v1",
+    mr: "current-mr-v1",
+  },
+} as const;
+
+// ── Landing page ─────────────────────────────────────────────────────────────
+function LandingPage() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">ホテル予算管理</h1>
+        <p className="text-gray-500">表示するデータの種類を選択してください</p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
+        <a
+          href="/?mode=budget"
+          className="flex-1 bg-white border-2 border-blue-200 hover:border-blue-400 rounded-2xl p-8 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="text-4xl mb-4">📋</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-700">予算金額</h2>
+          <p className="text-sm text-gray-500">積算シートに基づく予算額。<br/>基本的に変更されない確定値。</p>
+          <div className="mt-4 text-xs text-gray-400">総予算額: ¥28,929,665,120</div>
+        </a>
+        <a
+          href="/?mode=current"
+          className="flex-1 bg-white border-2 border-green-200 hover:border-green-400 rounded-2xl p-8 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="text-4xl mb-4">📊</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-green-700">現状金額</h2>
+          <p className="text-sm text-gray-500">現在の最新状況を反映した金額。<br/>随時更新可能。</p>
+          <div className="mt-4 text-xs text-gray-400">最新データをアップロードして管理</div>
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
+  const [mode, setMode] = useState<Mode | null>(null);
+
+  // Read mode from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const m = params.get("mode") as Mode | null;
+    if (m === "budget" || m === "current") setMode(m);
+  }, []);
+
+  // Show landing if no mode
+  if (mode === null) return <LandingPage />;
+
+  return <AppPage mode={mode} />;
+}
+
+function AppPage({ mode }: { mode: Mode }) {
+  const keys = STORAGE_KEYS[mode];
+  const modeLabel = mode === "budget" ? "予算金額" : "現状金額";
+  const modeColor = mode === "budget" ? "text-blue-600" : "text-green-600";
+  const modeBg = mode === "budget" ? "bg-blue-50" : "bg-green-50";
+
   const {
     hotels,
     initialized,
@@ -31,7 +101,7 @@ export default function Page() {
     updateCostItem,
     deleteCostItem,
     importHotels,
-  } = useHotels();
+  } = useHotels(keys.hotels);
 
   const handleUpdateHotel = (id: string, updates: Partial<Omit<Hotel, "id" | "costItems">>) => {
     updateHotel(id, updates);
@@ -58,6 +128,7 @@ export default function Page() {
     if (tab !== "budget") url.searchParams.delete("view");
     window.history.replaceState(null, "", url.toString());
   };
+
   // Excel DB for room charges and meeting rooms
   const [roomChargeDb, setRoomChargeDb] = useState<RoomChargesDB | null>(null);
   const [meetingRoomDb, setMeetingRoomDb] = useState<MeetingRoomsDB | null>(null);
@@ -66,18 +137,18 @@ export default function Page() {
   useEffect(() => {
     const loadDb = async () => {
       try {
-        const rcRaw = localStorage.getItem("room-charges-v2-uploaded");
-        const mrRaw = localStorage.getItem("meeting-rooms-v1-uploaded");
-        const allocRaw = localStorage.getItem(ALLOCATION_STORAGE_KEY);
+        const rcRaw = localStorage.getItem(keys.rc);
+        const mrRaw = localStorage.getItem(keys.mr);
+        const allocRaw = localStorage.getItem(keys.alloc);
         if (rcRaw) {
           setRoomChargeDb(JSON.parse(rcRaw));
-        } else {
+        } else if (mode === "budget") {
           const res = await fetch(`/budget-app/room-charges.json`);
           if (res.ok) setRoomChargeDb(await res.json());
         }
         if (mrRaw) {
           setMeetingRoomDb(JSON.parse(mrRaw));
-        } else {
+        } else if (mode === "budget") {
           const res = await fetch(`/budget-app/meeting-rooms.json`);
           if (res.ok) setMeetingRoomDb(await res.json());
         }
@@ -86,13 +157,14 @@ export default function Page() {
     };
     loadDb();
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "room-charges-v2-uploaded" && e.newValue) setRoomChargeDb(JSON.parse(e.newValue));
-      if (e.key === "meeting-rooms-v1-uploaded" && e.newValue) setMeetingRoomDb(JSON.parse(e.newValue));
-      if (e.key === ALLOCATION_STORAGE_KEY && e.newValue) setAllocationDb(JSON.parse(e.newValue));
+      if (e.key === keys.rc && e.newValue) setRoomChargeDb(JSON.parse(e.newValue));
+      if (e.key === keys.mr && e.newValue) setMeetingRoomDb(JSON.parse(e.newValue));
+      if (e.key === keys.alloc && e.newValue) setAllocationDb(JSON.parse(e.newValue));
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const [filterGroups, setFilterGroups] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -189,19 +261,23 @@ export default function Page() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">ホテル予算管理</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              契約ホテルの費用予算・実績を一元管理
+            <p className="text-sm mt-0.5">
+              <span className={`font-medium ${modeColor}`}>{modeLabel}</span>
+              <span className="text-gray-400 ml-2">— 契約ホテルの費用を一元管理</span>
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => window.history.back()}
+            <Link
+              href="/"
               className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 transition-colors"
             >
-              ← 戻る
-            </button>
+              ← トップ
+            </Link>
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${modeBg} ${modeColor} border-current/20`}>
+              {modeLabel}
+            </span>
             <Link
-              href="/admin"
+              href={`/admin?mode=${mode}`}
               className="text-sm text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
             >
               <span>⚙</span>
@@ -348,6 +424,7 @@ export default function Page() {
                     onDeleteCostItem={(itemId, desc) =>
                       handleDeleteCostItem(hotel.id, itemId, desc)
                     }
+                    mode={mode}
                   />
                 ))}
               </div>
