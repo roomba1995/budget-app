@@ -13,12 +13,13 @@ import HotelCard from "@/components/HotelCard";
 import HotelFormModal from "@/components/HotelFormModal";
 import CostItemModal from "@/components/CostItemModal";
 import BudgetSummaryView from "@/components/BudgetSummaryView";
+import BudgetOverallView from "@/components/BudgetOverallView";
 import ExecutionDashboard from "@/components/ExecutionDashboard";
 import ContractStatusView from "@/components/ContractStatusView";
 import BudgetVersionView from "@/components/BudgetVersionView";
 import MealCategoryView from "@/components/MealCategoryView";
 
-type Tab = "hotels" | "budget" | "execution" | "contract" | "version" | "meal";
+type Tab = "hotels" | "overall" | "budget" | "execution" | "contract" | "version" | "meal";
 
 export default function Page() {
   const {
@@ -36,7 +37,7 @@ export default function Page() {
     updateHotel(id, updates);
   };
 
-  const VALID_TABS: Tab[] = ["hotels", "budget", "execution", "contract", "version", "meal"];
+  const VALID_TABS: Tab[] = ["hotels", "overall", "budget", "execution", "contract", "version", "meal"];
   const [activeTab, setActiveTab] = useState<Tab>("hotels");
   const [initialSubView, setInitialSubView] = useState<string | undefined>(undefined);
 
@@ -219,6 +220,12 @@ export default function Page() {
               ホテル管理
             </TabButton>
             <TabButton
+              active={activeTab === "overall"}
+              onClick={() => handleSetActiveTab("overall")}
+            >
+              全体予算管理
+            </TabButton>
+            <TabButton
               active={activeTab === "budget"}
               onClick={() => handleSetActiveTab("budget")}
             >
@@ -347,6 +354,8 @@ export default function Page() {
             )}
           </>
         )}
+
+        {activeTab === "overall" && <BudgetOverallView onNavigate={handleSetActiveTab} />}
 
         {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} allocationDb={allocationDb} />}
 
