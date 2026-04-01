@@ -149,8 +149,10 @@ const GRAND_TOTAL = {
   total: 28_929_665_120,
 };
 
+type Tab = "hotels" | "overall" | "budget" | "execution" | "contract" | "version" | "meal";
+
 interface Props {
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: Tab) => void;
 }
 
 export default function BudgetOverallView({ onNavigate }: Props) {
@@ -229,7 +231,7 @@ export default function BudgetOverallView({ onNavigate }: Props) {
                         {cat.label}
                         {cat.hasDetail && (
                           <button
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
                               onNavigate("budget");
                             }}
