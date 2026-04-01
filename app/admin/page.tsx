@@ -256,7 +256,37 @@ function ParseResultTable({
   );
 }
 
+type Mode = "budget" | "current";
+
+const STORAGE_KEYS = {
+  budget: {
+    hotels: "hotel-budget-data-v2",
+    alloc: ALLOCATION_STORAGE_KEY,
+    allocMatch: ALLOCATION_MATCH_KEY,
+    rc: "room-charges-v2-uploaded",
+    mr: "meeting-rooms-v1-uploaded",
+  },
+  current: {
+    hotels: "current-hotels-v1",
+    alloc: "current-alloc-v1",
+    allocMatch: "current-alloc-match-v1",
+    rc: "current-rc-v1",
+    mr: "current-mr-v1",
+  },
+} as const;
+
 export default function AdminPage() {
+  const [mode, setMode] = useState<Mode>("budget");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const m = params.get("mode") as Mode | null;
+    if (m === "budget" || m === "current") setMode(m);
+  }, []);
+
+  const keys = STORAGE_KEYS[mode];
+  const modeLabel = mode === "budget" ? "予算金額" : "現状金額";
+
   const {
     hotels,
     initialized,
@@ -264,7 +294,7 @@ export default function AdminPage() {
     updateHotel,
     deleteHotel,
     mergeImportHotels,
-  } = useHotels();
+  } = useHotels(keys.hotels);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [hotelModalOpen, setHotelModalOpen] = useState(false);
@@ -306,7 +336,7 @@ export default function AdminPage() {
       if (s) setColPreview(JSON.parse(s));
     } catch { /* ignore */ }
     try {
-      const s1 = localStorage.getItem("room-charges-v2-uploaded");
+      const s1 = localStorage.getItem(keys.rc);
       if (s1) setRcCount(Object.keys(JSON.parse(s1)).length);
     } catch { /* ignore */ }
     try {
@@ -314,14 +344,15 @@ export default function AdminPage() {
       if (s2) setMcCount(Object.keys(JSON.parse(s2)).length);
     } catch { /* ignore */ }
     try {
-      const s3 = localStorage.getItem(ALLOCATION_STORAGE_KEY);
+      const s3 = localStorage.getItem(keys.alloc);
       if (s3) setAllocCount(Object.keys(JSON.parse(s3)).length);
     } catch { /* ignore */ }
     try {
-      const s4 = localStorage.getItem(ALLOCATION_MATCH_KEY);
+      const s4 = localStorage.getItem(keys.allocMatch);
       if (s4) setAllocMatchSel(JSON.parse(s4));
     } catch { /* ignore */ }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const handleRcUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,10 +375,10 @@ export default function AdminPage() {
         parseRoomChargesFromFile(file),
         parseMeetingRoomsFromFile(file),
       ]);
-      localStorage.setItem(ROOM_CHARGES_STORAGE_KEY, JSON.stringify(rcResult.db));
-      localStorage.setItem(MEETING_ROOMS_STORAGE_KEY, JSON.stringify(mrResult.db));
-      window.dispatchEvent(new StorageEvent("storage", { key: ROOM_CHARGES_STORAGE_KEY, newValue: JSON.stringify(rcResult.db) }));
-      window.dispatchEvent(new StorageEvent("storage", { key: MEETING_ROOMS_STORAGE_KEY, newValue: JSON.stringify(mrResult.db) }));
+      localStorage.setItem(keys.rc, JSON.stringify(rcResult.db));
+      localStorage.setItem(keys.mr, JSON.stringify(mrResult.db));
+      window.dispatchEvent(new StorageEvent("storage", { key: keys.rc, newValue: JSON.stringify(rcResult.db) }));
+      window.dispatchEvent(new StorageEvent("storage", { key: keys.mr, newValue: JSON.stringify(mrResult.db) }));
       setRcCount(rcResult.count);
       setRcErrors(rcResult.errors);
       setMrErrors(mrResult.errors);
@@ -392,7 +423,7 @@ export default function AdminPage() {
       // Deep merge with existing localStorage data:
       // - New hotels from Excel are added
       // - Existing hotels get field-level merge (null values from Excel do NOT overwrite existing non-null values)
-      const existingRaw = localStorage.getItem(ALLOCATION_STORAGE_KEY);
+      const existingRaw = localStorage.getItem(keys.alloc);
       const existingDb = existingRaw ? JSON.parse(existingRaw) : {};
       type Sec = Record<string, unknown> | null;
       const mergeSection = (ex: Sec, inc: Sec): Sec => {
@@ -408,8 +439,8 @@ export default function AdminPage() {
         if (!ex) { mergedDb[key] = newEntry; }
         else { mergedDb[key] = { hotelName: newEntry.hotelName || ex.hotelName, asia: mergeSection(ex.asia, newEntry.asia), para: mergeSection(ex.para, newEntry.para) }; }
       }
-      localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(mergedDb));
-      window.dispatchEvent(new StorageEvent("storage", { key: ALLOCATION_STORAGE_KEY, newValue: JSON.stringify(mergedDb) }));
+      localStorage.setItem(keys.alloc, JSON.stringify(mergedDb));
+      window.dispatchEvent(new StorageEvent("storage", { key: keys.alloc, newValue: JSON.stringify(mergedDb) }));
       setAllocCount(Object.keys(mergedDb).length);
       setAllocUnmatched(result.unmatched);
       const unmatchedCount = result.unmatched.length;
@@ -427,7 +458,7 @@ export default function AdminPage() {
     setLastAllocFile(file);
     const overrides: Record<string, string> = {};
     try {
-      const s = localStorage.getItem(ALLOCATION_MATCH_KEY);
+      const s = localStorage.getItem(keys.allocMatch);
       if (s) Object.assign(overrides, JSON.parse(s));
     } catch { /* ignore */ }
     await runAllocParse(file, overrides);
@@ -436,7 +467,7 @@ export default function AdminPage() {
 
   const handleAllocMatchApply = async () => {
     if (!lastAllocFile) return;
-    localStorage.setItem(ALLOCATION_MATCH_KEY, JSON.stringify(allocMatchSel));
+    localStorage.setItem(keys.allocMatch, JSON.stringify(allocMatchSel));
     await runAllocParse(lastAllocFile, allocMatchSel);
   };
 
@@ -526,20 +557,20 @@ export default function AdminPage() {
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
-            >
-              ← 戻る
-            </button>
+            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors">
+              ← トップ
+            </Link>
             <span className="text-gray-200 select-none">|</span>
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            <Link href={`/?mode=${mode}`} className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
               メイン画面
             </Link>
             <div className="h-4 w-px bg-gray-300" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">管理画面</h1>
-              <p className="text-xs text-gray-500 mt-0.5">施設データの管理・インポート</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                <span className={mode === "budget" ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>{modeLabel}</span>
+                {" — "}施設データの管理・インポート
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
