@@ -124,7 +124,14 @@ function parseSheet(
     const row = rows[i] ?? [];
     const colA = (row as unknown[])[0];
     const colANum = typeof colA === "number" ? colA : (typeof colA === "string" ? Number(colA.trim()) : NaN);
-    if (!Number.isFinite(colANum) || !Number.isInteger(colANum) || colANum <= 0) continue;
+    if (!Number.isFinite(colANum) || !Number.isInteger(colANum) || colANum <= 0) {
+      // Debug: log skipped rows that have a facilityNo in col B (to catch hotels being skipped)
+      const colB = (row as unknown[])[1];
+      if (typeof window !== "undefined" && colB !== null && colB !== undefined && colB !== "") {
+        console.warn(`[parseSheet skip][${group}] row ${i}: colA=${JSON.stringify(colA)} colB=${JSON.stringify(colB)} colC=${JSON.stringify((row as unknown[])[2])}`);
+      }
+      continue;
+    }
 
     const no = colANum;
     const facilityNo = normFacilityNo((row as unknown[])[1]);
