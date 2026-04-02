@@ -1206,7 +1206,7 @@ function HotelDetailInner() {
   // カテゴリ別サブタブ（exec/contract/diff）
   const [rcSubTab, setRcSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [mrSubTab, setMrSubTab] = useState<"exec"|"contract"|"diff">("exec");
-  const [otherSubTab, setOtherSubTab] = useState<"exec"|"contract">("exec");
+  const [otherSubTab, setOtherSubTab] = useState<"exec"|"contract"|"diff">("exec");
   // 個別アップロード（後方互換）
   const [execUploading, setExecUploading] = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
