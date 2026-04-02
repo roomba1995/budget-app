@@ -543,6 +543,39 @@ export default function AdminPage() {
     return result.alerts;
   };
 
+  const handleCopyToCurrent = () => {
+    if (!confirm(
+      "予算金額モードのホテル情報・配宿情報を現状金額モードにコピーします。\n" +
+      "実績金額はすべて0にリセットされます。\n\n" +
+      "現在の現状金額データは上書きされます。よろしいですか？"
+    )) return;
+    try {
+      // ホテルデータコピー（実績金額をゼロクリア）
+      const hotelsRaw = localStorage.getItem("hotel-budget-data-v2");
+      if (hotelsRaw) {
+        const src: Hotel[] = JSON.parse(hotelsRaw);
+        const cleared = src.map((h) => ({
+          ...h,
+          costItems: h.costItems.map((i) => ({ ...i, actualAmount: 0 })),
+        }));
+        const newVal = JSON.stringify(cleared);
+        localStorage.setItem("current-hotels-v1", newVal);
+        window.dispatchEvent(new StorageEvent("storage", { key: "current-hotels-v1", newValue: newVal }));
+      }
+      // 積算シート（配宿情報）コピー
+      const allocRaw = localStorage.getItem("budget-allocation-v1");
+      if (allocRaw) localStorage.setItem("current-alloc-v1", allocRaw);
+      // 配宿マッチングコピー
+      const allocMatchRaw = localStorage.getItem("budget-allocation-match-v1");
+      if (allocMatchRaw) localStorage.setItem("current-alloc-match-v1", allocMatchRaw);
+
+      alert("コピーが完了しました。現状金額モードへ移動します。");
+      window.location.href = "/?mode=current";
+    } catch (e) {
+      alert("コピーに失敗しました: " + String(e));
+    }
+  };
+
   if (!initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -591,6 +624,28 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* 現状金額へのデータコピー（予算金額モードのみ表示） */}
+        {mode === "budget" && (
+          <div className="bg-white rounded-xl border border-amber-200 shadow-sm">
+            <div className="px-5 py-4 border-b border-amber-100">
+              <h2 className="text-base font-semibold text-gray-800">現状金額モードへのデータコピー</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                予算金額モードのホテル情報・配宿情報を現状金額モードにコピーします。実績金額は0にリセットされます。
+              </p>
+            </div>
+            <div className="px-5 py-4 flex items-center gap-4">
+              <button
+                onClick={handleCopyToCurrent}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                現状金額にコピー（{hotels.length}件）
+              </button>
+              <span className="text-xs text-gray-400">
+                ホテル情報・ステークホルダー配宿情報をコピーします。Excelデータ（客室・会議室）は含まれません。
+              </span>
+            </div>
+          </div>
+        )}
         {/* 列定義管理セクション */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100">
