@@ -14,13 +14,11 @@ import HotelFormModal from "@/components/HotelFormModal";
 import CostItemModal from "@/components/CostItemModal";
 import BudgetSummaryView from "@/components/BudgetSummaryView";
 import BudgetOverallView from "@/components/BudgetOverallView";
-import ExecutionDashboard from "@/components/ExecutionDashboard";
-import ContractStatusView from "@/components/ContractStatusView";
 import BudgetVersionView from "@/components/BudgetVersionView";
 import MealCategoryView from "@/components/MealCategoryView";
 
 type Mode = "budget" | "current";
-type Tab = "hotels" | "overall" | "budget" | "execution" | "contract" | "version" | "meal";
+type Tab = "hotels" | "overall" | "budget" | "version" | "meal";
 
 // ストレージキーをモードに応じて切り替え
 const STORAGE_KEYS = {
@@ -117,7 +115,7 @@ function AppPage({ mode }: { mode: Mode }) {
     updateHotel(id, updates);
   };
 
-  const VALID_TABS: Tab[] = ["hotels", "overall", "budget", "execution", "contract", "version", "meal"];
+  const VALID_TABS: Tab[] = ["hotels", "overall", "budget", "version", "meal"];
   const [activeTab, setActiveTab] = useState<Tab>("hotels");
   const [initialSubView, setInitialSubView] = useState<string | undefined>(undefined);
 
@@ -318,18 +316,6 @@ function AppPage({ mode }: { mode: Mode }) {
               宿泊確保費積算
             </TabButton>
             <TabButton
-              active={activeTab === "execution"}
-              onClick={() => handleSetActiveTab("execution")}
-            >
-              執行状況
-            </TabButton>
-            <TabButton
-              active={activeTab === "contract"}
-              onClick={() => handleSetActiveTab("contract")}
-            >
-              契約状況
-            </TabButton>
-            <TabButton
               active={activeTab === "version"}
               onClick={() => handleSetActiveTab("version")}
             >
@@ -445,15 +431,6 @@ function AppPage({ mode }: { mode: Mode }) {
         {activeTab === "overall" && <BudgetOverallView onNavigate={handleSetActiveTab} />}
 
         {activeTab === "budget" && <BudgetSummaryView hotels={hotels} initialSubView={initialSubView} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} allocationDb={allocationDb} />}
-
-        {activeTab === "execution" && <ExecutionDashboard hotels={hotels} />}
-
-        {activeTab === "contract" && (
-          <ContractStatusView
-            hotels={hotels}
-            onUpdateHotel={handleUpdateHotel}
-          />
-        )}
 
         {activeTab === "version" && (
           <BudgetVersionView hotels={hotels} onRestoreSnapshot={importHotels} />
