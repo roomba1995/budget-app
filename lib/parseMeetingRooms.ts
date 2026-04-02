@@ -214,13 +214,14 @@ function parseSection(rows: unknown[][], startRow: number, endRow: number): Meet
  * Returns the facilityNo and entry, or an error string.
  */
 export async function parseMeetingRoomsFromPerHotelFile(
-  file: File
+  file: File,
+  overrideSheetName?: string
 ): Promise<{ facilityNo: string; entry: MeetingRoomEntry } | { error: string }> {
   const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
 
-  const sheetName = workbook.SheetNames.find((n) => n.includes("別紙1-2"));
+  const sheetName = overrideSheetName ?? workbook.SheetNames.find((n) => n.includes("別紙1-2"));
   if (!sheetName) return { error: "別紙1-2シートが見つかりません" };
 
   const match = sheetName.match(/^0*(\d+)[_　\s]/);
