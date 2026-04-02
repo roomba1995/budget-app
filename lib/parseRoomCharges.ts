@@ -277,13 +277,14 @@ function parseSection(
  * Returns the facilityNo and entry, or an error string.
  */
 export async function parseRoomChargesFromPerHotelFile(
-  file: File
+  file: File,
+  overrideSheetName?: string
 ): Promise<{ facilityNo: string; entry: RoomChargeEntry } | { error: string }> {
   const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
 
-  const sheetName = workbook.SheetNames.find((n) => n.includes("別紙1-1"));
+  const sheetName = overrideSheetName ?? workbook.SheetNames.find((n) => n.includes("別紙1-1"));
   if (!sheetName) return { error: "別紙1-1シートが見つかりません" };
 
   const match = sheetName.match(/^0*(\d+)[_　\s]/);
@@ -328,6 +329,22 @@ export async function extractHotelNameFromExcel(file: File): Promise<string | nu
   // C2セル
   const c2 = ws["C2"]?.v ?? ws["B2"]?.v ?? ws["C3"]?.v ?? null;
   return c2 ? String(c2).trim() : null;
+}
+
+// ── Sheet info helper ────────────────────────────────────────────────────────
+
+/**
+ * Return all 別紙1-1 and 別紙1-2 sheet names in the given Excel file.
+ * Used for multi-sheet selection UI.
+ */
+export async function getExcelSheetInfo(file: File): Promise<{ rcSheets: string[]; mrSheets: string[] }> {
+  const XLSX = await import("xlsx");
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  return {
+    rcSheets: wb.SheetNames.filter(n => n.includes("別紙1-1")),
+    mrSheets: wb.SheetNames.filter(n => n.includes("別紙1-2")),
+  };
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
