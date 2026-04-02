@@ -359,7 +359,7 @@ function AppPage({ mode }: { mode: Mode }) {
         {activeTab === "hotels" && (
           <>
             {/* Summary */}
-            <SummarySection hotels={hotels} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} overallBudgetTotal={28_929_665_120} />
+            <SummarySection hotels={hotels} roomChargeDb={roomChargeDb} meetingRoomDb={meetingRoomDb} overallBudgetTotal={28_929_665_120} hideBreakdown={mode === "budget"} />
 
             {/* Group Filter */}
             <div className="flex flex-wrap items-center gap-2">
