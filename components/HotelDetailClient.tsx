@@ -287,6 +287,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
           <div className="font-bold text-emerald-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
         </div>
       </div>
+
     </div>
   );
 }
@@ -1096,6 +1097,15 @@ function CurrentModeMrDiffView({ execEntry, contractEntry }: { execEntry: Meetin
   );
 }
 
+type SheetPending = {
+  file: File;
+  rcSheets: string[];   // 別紙1-1 candidates
+  mrSheets: string[];   // 別紙1-2 candidates
+  selectedRc: string | null;  // null = 読み込まない
+  selectedMr: string | null;
+  action: "hotelExec" | "hotelContract" | "rc" | "mr" | "currentExec" | "currentContract" | "currentMrExec" | "currentMrContract";
+};
+
 function HotelDetailInner() {
   const searchParams = useSearchParams();
   const id = searchParams?.get("id") ?? "";
@@ -1207,6 +1217,7 @@ function HotelDetailInner() {
   const [rcSubTab, setRcSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [mrSubTab, setMrSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [otherSubTab, setOtherSubTab] = useState<"exec"|"contract"|"diff">("exec");
+  const [sheetPending, setSheetPending] = useState<SheetPending | null>(null);
   // 個別アップロード（後方互換）
   const [execUploading, setExecUploading] = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
@@ -1402,13 +1413,13 @@ function HotelDetailInner() {
 
   const facilityNoKey = hotel?.facilityNo ? String(parseInt(hotel.facilityNo, 10)) : null;
 
-  const handleRcUpload = async (file: File) => {
+  const handleRcUpload = async (file: File, specificSheet?: string) => {
     if (!facilityNoKey) return;
     setRcUploading(true);
     setRcUploadError(null);
     try {
       const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
-      const result = await parseRoomChargesFromPerHotelFile(file);
+      const result = await parseRoomChargesFromPerHotelFile(file, specificSheet);
       if ("error" in result) { setRcUploadError(result.error); return; }
       localStorage.setItem(`room-charges-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
       setPerHotelRcEntry(result.entry);
@@ -1419,13 +1430,23 @@ function HotelDetailInner() {
     }
   };
 
-  const handleMrUpload = async (file: File) => {
+  const handleRcFileSelect = async (file: File) => {
+    const { getExcelSheetInfo } = await import("@/lib/parseRoomCharges");
+    const { rcSheets } = await getExcelSheetInfo(file);
+    if (rcSheets.length > 1) {
+      setSheetPending({ file, rcSheets, mrSheets: [], selectedRc: rcSheets[0], selectedMr: null, action: "rc" });
+    } else {
+      await handleRcUpload(file, rcSheets[0]);
+    }
+  };
+
+  const handleMrUpload = async (file: File, specificSheet?: string) => {
     if (!facilityNoKey) return;
     setMrUploading(true);
     setMrUploadError(null);
     try {
       const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
-      const result = await parseMeetingRoomsFromPerHotelFile(file);
+      const result = await parseMeetingRoomsFromPerHotelFile(file, specificSheet);
       if ("error" in result) { setMrUploadError(result.error); return; }
       localStorage.setItem(`meeting-rooms-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
       setPerHotelMrEntry(result.entry);
@@ -1433,6 +1454,16 @@ function HotelDetailInner() {
       setMrUploadError(e instanceof Error ? e.message : "エラー");
     } finally {
       setMrUploading(false);
+    }
+  };
+
+  const handleMrFileSelect = async (file: File) => {
+    const { getExcelSheetInfo } = await import("@/lib/parseRoomCharges");
+    const { mrSheets } = await getExcelSheetInfo(file);
+    if (mrSheets.length > 1) {
+      setSheetPending({ file, rcSheets: [], mrSheets, selectedRc: null, selectedMr: mrSheets[0], action: "mr" });
+    } else {
+      await handleMrUpload(file, mrSheets[0]);
     }
   };
 
@@ -1500,7 +1531,7 @@ function HotelDetailInner() {
     };
   }
 
-  const handleHotelLevelUpload = async (file: File, type: "exec" | "contract") => {
+  const doHotelLevelUpload = async (file: File, type: "exec" | "contract", rcSheet: string | null, mrSheet: string | null) => {
     setHotelUploading(true);
     setHotelUploadError(null);
     setHotelUploadMsg(null);
@@ -1513,33 +1544,37 @@ function HotelDetailInner() {
     const saved: string[] = [];
     try {
       // 別紙1-1（客室確保費）
-      try {
-        const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
-        const rcResult = await parseRoomChargesFromPerHotelFile(file);
-        if (!("error" in rcResult)) {
-          const key = `current-${type}-rc-${facilityNo}`;
-          const existing = type === "exec" ? execEntry : contractEntry;
-          const merged = mergeRoomChargeEntry(existing, rcResult.entry);
-          localStorage.setItem(key, JSON.stringify(merged));
-          if (type === "exec") setExecEntry(merged);
-          else setContractEntry(merged);
-          saved.push("別紙1-1（客室確保費）");
-        }
-      } catch { /* シートなし */ }
+      if (rcSheet !== null) {
+        try {
+          const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
+          const rcResult = await parseRoomChargesFromPerHotelFile(file, rcSheet || undefined);
+          if (!("error" in rcResult)) {
+            const key = `current-${type}-rc-${facilityNo}`;
+            const existing = type === "exec" ? execEntry : contractEntry;
+            const merged = mergeRoomChargeEntry(existing, rcResult.entry);
+            localStorage.setItem(key, JSON.stringify(merged));
+            if (type === "exec") setExecEntry(merged);
+            else setContractEntry(merged);
+            saved.push("別紙1-1（客室確保費）");
+          }
+        } catch { /* シートなし */ }
+      }
       // 別紙1-2（会議室等確保費）
-      try {
-        const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
-        const mrResult = await parseMeetingRoomsFromPerHotelFile(file);
-        if (!("error" in mrResult)) {
-          const key = `current-${type}-mr-${facilityNo}`;
-          const existing = type === "exec" ? execMrEntry : contractMrEntry;
-          const merged = mergeMeetingRoomEntry(existing, mrResult.entry);
-          localStorage.setItem(key, JSON.stringify(merged));
-          if (type === "exec") setExecMrEntry(merged);
-          else setContractMrEntry(merged);
-          saved.push("別紙1-2（会議室等確保費）");
-        }
-      } catch { /* シートなし */ }
+      if (mrSheet !== null) {
+        try {
+          const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
+          const mrResult = await parseMeetingRoomsFromPerHotelFile(file, mrSheet || undefined);
+          if (!("error" in mrResult)) {
+            const key = `current-${type}-mr-${facilityNo}`;
+            const existing = type === "exec" ? execMrEntry : contractMrEntry;
+            const merged = mergeMeetingRoomEntry(existing, mrResult.entry);
+            localStorage.setItem(key, JSON.stringify(merged));
+            if (type === "exec") setExecMrEntry(merged);
+            else setContractMrEntry(merged);
+            saved.push("別紙1-2（会議室等確保費）");
+          }
+        } catch { /* シートなし */ }
+      }
       if (saved.length === 0) {
         setHotelUploadError("別紙1-1・別紙1-2のシートが見つかりませんでした。");
       } else {
@@ -1552,13 +1587,24 @@ function HotelDetailInner() {
     }
   };
 
-  const handleCurrentUpload = async (file: File, type: "exec" | "contract") => {
+  const handleHotelLevelUpload = async (file: File, type: "exec" | "contract") => {
+    const { getExcelSheetInfo } = await import("@/lib/parseRoomCharges");
+    const { rcSheets, mrSheets } = await getExcelSheetInfo(file);
+    if (rcSheets.length > 1 || mrSheets.length > 1) {
+      const action = type === "exec" ? "hotelExec" : "hotelContract";
+      setSheetPending({ file, rcSheets, mrSheets, selectedRc: rcSheets[0] ?? null, selectedMr: mrSheets[0] ?? null, action });
+      return;
+    }
+    await doHotelLevelUpload(file, type, rcSheets[0] ?? null, mrSheets[0] ?? null);
+  };
+
+  const handleCurrentUpload = async (file: File, type: "exec" | "contract", specificSheet?: string) => {
     const setter = type === "exec" ? setExecUploading : setContractUploading;
     const errSetter = type === "exec" ? setExecUploadError : setContractUploadError;
     setter(true); errSetter(null);
     try {
       const { parseRoomChargesFromPerHotelFile, extractHotelNameFromExcel } = await import("@/lib/parseRoomCharges");
-      const result = await parseRoomChargesFromPerHotelFile(file);
+      const result = await parseRoomChargesFromPerHotelFile(file, specificSheet);
       if ("error" in result) { errSetter(result.error); return; }
       const detectedName = await extractHotelNameFromExcel(file);
       const facilityNo = hotel?.facilityNo;
@@ -1579,6 +1625,66 @@ function HotelDetailInner() {
       errSetter(String(e));
     } finally {
       setter(false);
+    }
+  };
+
+  const handleCurrentFileSelect = async (file: File, type: "exec" | "contract") => {
+    const { getExcelSheetInfo } = await import("@/lib/parseRoomCharges");
+    const { rcSheets } = await getExcelSheetInfo(file);
+    if (rcSheets.length > 1) {
+      const action = type === "exec" ? "currentExec" : "currentContract";
+      setSheetPending({ file, rcSheets, mrSheets: [], selectedRc: rcSheets[0], selectedMr: null, action });
+    } else {
+      await handleCurrentUpload(file, type, rcSheets[0]);
+    }
+  };
+
+  const handleCurrentMrUpload = async (file: File, type: "exec" | "contract", specificSheet?: string) => {
+    if (!hotel?.facilityNo) return;
+    try {
+      const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
+      const r = await parseMeetingRoomsFromPerHotelFile(file, specificSheet);
+      if ("error" in r) return;
+      if (type === "exec") {
+        const merged = mergeMeetingRoomEntry(execMrEntry, r.entry);
+        localStorage.setItem(`current-exec-mr-${hotel.facilityNo}`, JSON.stringify(merged));
+        setExecMrEntry(merged);
+      } else {
+        const merged = mergeMeetingRoomEntry(contractMrEntry, r.entry);
+        localStorage.setItem(`current-contract-mr-${hotel.facilityNo}`, JSON.stringify(merged));
+        setContractMrEntry(merged);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleCurrentMrFileSelect = async (file: File, type: "exec" | "contract") => {
+    const { getExcelSheetInfo } = await import("@/lib/parseRoomCharges");
+    const { mrSheets } = await getExcelSheetInfo(file);
+    if (mrSheets.length > 1) {
+      const action = type === "exec" ? "currentMrExec" : "currentMrContract";
+      setSheetPending({ file, rcSheets: [], mrSheets, selectedRc: null, selectedMr: mrSheets[0], action });
+    } else {
+      await handleCurrentMrUpload(file, type, mrSheets[0]);
+    }
+  };
+
+  const handleSheetConfirm = async () => {
+    if (!sheetPending) return;
+    const { file, selectedRc, selectedMr, action } = sheetPending;
+    setSheetPending(null);
+    if (action === "rc") {
+      if (selectedRc) await handleRcUpload(file, selectedRc);
+    } else if (action === "mr") {
+      if (selectedMr) await handleMrUpload(file, selectedMr);
+    } else if (action === "hotelExec" || action === "hotelContract") {
+      const type = action === "hotelExec" ? "exec" : "contract";
+      await doHotelLevelUpload(file, type, selectedRc, selectedMr);
+    } else if (action === "currentExec" || action === "currentContract") {
+      const type = action === "currentExec" ? "exec" : "contract";
+      if (selectedRc) await handleCurrentUpload(file, type, selectedRc);
+    } else if (action === "currentMrExec" || action === "currentMrContract") {
+      const type = action === "currentMrExec" ? "exec" : "contract";
+      if (selectedMr) await handleCurrentMrUpload(file, type, selectedMr);
     }
   };
 
@@ -1949,7 +2055,7 @@ function HotelDetailInner() {
                               <label className={`cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded ${execUploading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"}`}>
                                 {execUploading ? "処理中..." : "↑ 予算執行額"}
                                 <input type="file" accept=".xlsx,.xls" className="hidden" disabled={execUploading}
-                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleCurrentUpload(f, "exec"); e.target.value = ""; }} />
+                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleCurrentFileSelect(f, "exec"); e.target.value = ""; }} />
                               </label>
                               {execUploadError && <span className="text-xs text-red-500">{execUploadError}</span>}
                             </div>
@@ -1963,7 +2069,7 @@ function HotelDetailInner() {
                               <label className={`cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded ${contractUploading ? "bg-green-400" : "bg-green-600 hover:bg-green-700"}`}>
                                 {contractUploading ? "処理中..." : "↑ 契約額"}
                                 <input type="file" accept=".xlsx,.xls" className="hidden" disabled={contractUploading}
-                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleCurrentUpload(f, "contract"); e.target.value = ""; }} />
+                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleCurrentFileSelect(f, "contract"); e.target.value = ""; }} />
                               </label>
                               {contractUploadError && <span className="text-xs text-red-500">{contractUploadError}</span>}
                             </div>
@@ -1976,7 +2082,7 @@ function HotelDetailInner() {
                       <>
                         <UploadButton
                           label="別紙1-1 Excelアップロード"
-                          onFile={handleRcUpload}
+                          onFile={handleRcFileSelect}
                           uploading={rcUploading}
                           uploadError={rcUploadError}
                           uploadSuccess={perHotelRcEntry != null}
@@ -1999,13 +2105,8 @@ function HotelDetailInner() {
                                 ↑ 予算執行額
                                 <input type="file" accept=".xlsx,.xls" className="hidden"
                                   onChange={async e => {
-                                    const f = e.target.files?.[0]; if (!f || !hotel?.facilityNo) return;
-                                    const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
-                                    const r = await parseMeetingRoomsFromPerHotelFile(f);
-                                    if ("error" in r) return;
-                                    const merged = mergeMeetingRoomEntry(execMrEntry, r.entry);
-                                    localStorage.setItem(`current-exec-mr-${hotel.facilityNo}`, JSON.stringify(merged));
-                                    setExecMrEntry(merged);
+                                    const f = e.target.files?.[0]; if (!f) return;
+                                    await handleCurrentMrFileSelect(f, "exec");
                                     e.target.value = "";
                                   }} />
                               </label>
@@ -2021,13 +2122,8 @@ function HotelDetailInner() {
                                 ↑ 契約額
                                 <input type="file" accept=".xlsx,.xls" className="hidden"
                                   onChange={async e => {
-                                    const f = e.target.files?.[0]; if (!f || !hotel?.facilityNo) return;
-                                    const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
-                                    const r = await parseMeetingRoomsFromPerHotelFile(f);
-                                    if ("error" in r) return;
-                                    const merged = mergeMeetingRoomEntry(contractMrEntry, r.entry);
-                                    localStorage.setItem(`current-contract-mr-${hotel.facilityNo}`, JSON.stringify(merged));
-                                    setContractMrEntry(merged);
+                                    const f = e.target.files?.[0]; if (!f) return;
+                                    await handleCurrentMrFileSelect(f, "contract");
                                     e.target.value = "";
                                   }} />
                               </label>
@@ -2041,7 +2137,7 @@ function HotelDetailInner() {
                       <>
                         <UploadButton
                           label="別紙1-2 Excelアップロード"
-                          onFile={handleMrUpload}
+                          onFile={handleMrFileSelect}
                           uploading={mrUploading}
                           uploadError={mrUploadError}
                           uploadSuccess={perHotelMrEntry != null}
@@ -2108,6 +2204,44 @@ function HotelDetailInner() {
           }}
           onClose={() => setHotelEditOpen(false)}
         />
+      )}
+
+      {/* シート選択ダイアログ */}
+      {sheetPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSheetPending(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-1">読み込むシートを選択してください</h3>
+            <p className="text-xs text-gray-400 mb-5 truncate">{sheetPending.file.name}</p>
+            {sheetPending.rcSheets.length > 0 && (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">別紙1-1（客室確保費）</label>
+                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={sheetPending.selectedRc ?? "__skip__"}
+                  onChange={e => setSheetPending(prev => prev ? { ...prev, selectedRc: e.target.value === "__skip__" ? null : e.target.value } : null)}
+                >
+                  {sheetPending.rcSheets.map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value="__skip__">読み込まない</option>
+                </select>
+              </div>
+            )}
+            {sheetPending.mrSheets.length > 0 && (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">別紙1-2（会議室等確保費）</label>
+                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={sheetPending.selectedMr ?? "__skip__"}
+                  onChange={e => setSheetPending(prev => prev ? { ...prev, selectedMr: e.target.value === "__skip__" ? null : e.target.value } : null)}
+                >
+                  {sheetPending.mrSheets.map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value="__skip__">読み込まない</option>
+                </select>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setSheetPending(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">キャンセル</button>
+              <button onClick={handleSheetConfirm} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">取り込む</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
