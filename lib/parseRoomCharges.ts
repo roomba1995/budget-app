@@ -312,6 +312,24 @@ export async function parseRoomChargesFromPerHotelFile(
   return { facilityNo, entry: { hotelName, asia, para } };
 }
 
+// ── Extract hotel name from Excel (C2 cell) ──────────────────────────────────
+
+/**
+ * Extract the hotel name from C2 (or nearby) cell of a per-hotel 別紙1-1 Excel file.
+ */
+export async function extractHotelNameFromExcel(file: File): Promise<string | null> {
+  const XLSX = await import("xlsx");
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  // シートを探す（別紙1-1が最優先）
+  const sheetName = wb.SheetNames.find(n => n.includes("別紙1-1") || n.includes("別紙1-2")) ?? wb.SheetNames[0];
+  if (!sheetName) return null;
+  const ws = wb.Sheets[sheetName];
+  // C2セル
+  const c2 = ws["C2"]?.v ?? ws["B2"]?.v ?? ws["C3"]?.v ?? null;
+  return c2 ? String(c2).trim() : null;
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function parseRoomChargesFromFile(
