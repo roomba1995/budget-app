@@ -59,10 +59,11 @@ export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, ov
     return s + otherActual + (ex.asia ?? 0) + (ex.para ?? 0);
   }, 0);
 
-  const variance = calcVariance(totalBudget, totalActual);
+  const effectiveBudget = overallBudgetTotal ?? totalBudget;
+  const variance = calcVariance(effectiveBudget, totalActual);
   const varianceRate =
-    totalBudget > 0
-      ? ((totalActual - totalBudget) / totalBudget) * 100
+    effectiveBudget > 0
+      ? ((totalActual - effectiveBudget) / effectiveBudget) * 100
       : 0;
 
   // Category breakdown (keep as-is from costItems for non-Excel categories)
@@ -172,7 +173,7 @@ export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, ov
         <SummaryCard
           label="乖離率"
           value={rateText}
-          sub={`予算 ${formatCurrency(totalBudget)} 基準`}
+          sub={`予算 ${formatCurrency(effectiveBudget)} 基準`}
           borderColor={
             varianceRate > 0
               ? "border-red-200"
