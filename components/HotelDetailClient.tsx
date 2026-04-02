@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense, useRef, useEffect } from "react";
+import React, { useState, useMemo, Suspense, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHotels } from "@/hooks/useHotels";
@@ -911,6 +911,37 @@ const HOTEL_STORAGE_KEYS: Record<Mode, { hotels: string; rc: string; mr: string 
 // 差額比較コンポーネント（現状金額モード専用）
 // ─────────────────────────────────────────────
 
+function CurrentModeExecContractTabs({
+  tab, setTab, execContent, contractContent, diffContent, hideDiff,
+}: {
+  tab: "exec" | "contract" | "diff";
+  setTab: (t: "exec" | "contract" | "diff") => void;
+  execContent: React.ReactNode;
+  contractContent: React.ReactNode;
+  diffContent: React.ReactNode;
+  hideDiff?: boolean;
+}) {
+  const tabs = hideDiff
+    ? (["exec", "contract"] as const)
+    : (["exec", "contract", "diff"] as const);
+  const label = (t: string) => t === "exec" ? "予算執行額" : t === "contract" ? "契約額" : "差額比較";
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 border-b border-gray-200">
+        {tabs.map(t => (
+          <button key={t} onClick={() => setTab(t as "exec" | "contract" | "diff")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {label(t)}
+          </button>
+        ))}
+      </div>
+      {tab === "exec" && execContent}
+      {tab === "contract" && contractContent}
+      {tab === "diff" && !hideDiff && diffContent}
+    </div>
+  );
+}
+
 function CurrentModeDiffView({ execEntry, contractEntry }: { execEntry: RoomChargesDB[string]|null, contractEntry: RoomChargesDB[string]|null }) {
   if (!execEntry && !contractEntry) return <p className="text-sm text-gray-400">予算執行額と契約額のデータをアップロードしてください</p>;
 
@@ -974,6 +1005,81 @@ function CurrentModeDiffView({ execEntry, contractEntry }: { execEntry: RoomChar
                             <td className="border border-gray-200 px-3 py-2 text-right">{cFee ? fmt(cFee) : "—"}</td>
                             <td className={`border border-gray-200 px-3 py-2 text-right font-medium ${d < 0 ? "text-red-600" : d > 0 ? "text-gray-700" : "text-gray-400"}`}>
                               {d === 0 ? "±0" : `${d<0?"▲":"+"}${fmt(Math.abs(d))}`}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CurrentModeMrDiffView({ execEntry, contractEntry }: { execEntry: MeetingRoomsDB[string]|null, contractEntry: MeetingRoomsDB[string]|null }) {
+  if (!execEntry && !contractEntry) return <p className="text-sm text-gray-400">予算執行額と契約額のデータをアップロードしてください</p>;
+  const fmt = (n: number) => n.toLocaleString("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
+  const sections = [
+    { label: "アジア競技大会", exec: execEntry?.asia ?? null, contract: contractEntry?.asia ?? null },
+    { label: "パラ競技大会",   exec: execEntry?.para ?? null, contract: contractEntry?.para ?? null },
+  ];
+  return (
+    <div className="space-y-6">
+      {sections.filter(s => s.exec || s.contract).map(sec => {
+        const execTotal = sec.exec?.totalCostTax ?? sec.exec?.totalCost ?? 0;
+        const contractTotal = sec.contract?.totalCostTax ?? sec.contract?.totalCost ?? 0;
+        const diff = execTotal - contractTotal;
+        return (
+          <div key={sec.label}>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">{sec.label}</h3>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="text-xs text-gray-500">予算執行額合計</div>
+                <div className="text-lg font-bold text-blue-700">{fmt(execTotal)}</div>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="text-xs text-gray-500">契約額合計</div>
+                <div className="text-lg font-bold text-green-700">{fmt(contractTotal)}</div>
+              </div>
+              <div className={`border rounded-lg p-3 ${diff >= 0 ? "bg-gray-50 border-gray-200" : "bg-red-50 border-red-200"}`}>
+                <div className="text-xs text-gray-500">差額（執行−契約）</div>
+                <div className={`text-lg font-bold ${diff > 0 ? "text-gray-700" : diff < 0 ? "text-red-600" : "text-gray-400"}`}>
+                  {diff === 0 ? "±0" : `${diff < 0 ? "▲" : "+"}${fmt(Math.abs(diff))}`}
+                </div>
+              </div>
+            </div>
+            {(sec.exec?.rooms || sec.contract?.rooms) && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-200 px-3 py-2 text-left">会場名</th>
+                      <th className="border border-gray-200 px-3 py-2 text-right">執行額</th>
+                      <th className="border border-gray-200 px-3 py-2 text-right">契約額</th>
+                      <th className="border border-gray-200 px-3 py-2 text-right">差額</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const allVenues = Array.from(new Set([...(sec.exec?.rooms ?? []).map(r => r.venueName), ...(sec.contract?.rooms ?? []).map(r => r.venueName)]));
+                      return allVenues.map(vn => {
+                        const eRow = sec.exec?.rooms.find(r => r.venueName === vn);
+                        const cRow = sec.contract?.rooms.find(r => r.venueName === vn);
+                        const eFee = eRow?.totalPrice ?? 0;
+                        const cFee = cRow?.totalPrice ?? 0;
+                        const d = eFee - cFee;
+                        return (
+                          <tr key={vn} className="hover:bg-gray-50">
+                            <td className="border border-gray-200 px-3 py-2">{vn}</td>
+                            <td className="border border-gray-200 px-3 py-2 text-right">{eFee ? fmt(eFee) : "—"}</td>
+                            <td className="border border-gray-200 px-3 py-2 text-right">{cFee ? fmt(cFee) : "—"}</td>
+                            <td className={`border border-gray-200 px-3 py-2 text-right font-medium ${d < 0 ? "text-red-600" : d > 0 ? "text-gray-700" : "text-gray-400"}`}>
+                              {d === 0 ? "±0" : `${d < 0 ? "▲" : "+"}${fmt(Math.abs(d))}`}
                             </td>
                           </tr>
                         );
@@ -1087,16 +1193,28 @@ function HotelDetailInner() {
   const [mcUploadError, setMcUploadError] = useState<string | null>(null);
 
   // ── 現状金額モード: 予算執行額と契約額 ──────────────────────────────────────
+  // 客室確保費（別紙1-1）
   const [execEntry, setExecEntry] = useState<RoomChargesDB[string] | null>(null);
   const [contractEntry, setContractEntry] = useState<RoomChargesDB[string] | null>(null);
+  // 会議室等確保費（別紙1-2）
+  const [execMrEntry, setExecMrEntry] = useState<MeetingRoomsDB[string] | null>(null);
+  const [contractMrEntry, setContractMrEntry] = useState<MeetingRoomsDB[string] | null>(null);
+  // ホテル単位アップロード
+  const [hotelUploading, setHotelUploading] = useState(false);
+  const [hotelUploadError, setHotelUploadError] = useState<string | null>(null);
+  const [hotelUploadMsg, setHotelUploadMsg] = useState<string | null>(null);
+  // カテゴリ別サブタブ（exec/contract/diff）
+  const [rcSubTab, setRcSubTab] = useState<"exec"|"contract"|"diff">("exec");
+  const [mrSubTab, setMrSubTab] = useState<"exec"|"contract"|"diff">("exec");
+  const [otherSubTab, setOtherSubTab] = useState<"exec"|"contract">("exec");
+  // 個別アップロード（後方互換）
   const [execUploading, setExecUploading] = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
   const [execUploadError, setExecUploadError] = useState<string | null>(null);
   const [contractUploadError, setContractUploadError] = useState<string | null>(null);
-  // ホテル照合ダイアログ用
   const [pendingUploadData, setPendingUploadData] = useState<{entry: RoomChargesDB[string]; type: "exec"|"contract"; detectedName: string|null} | null>(null);
   const [matchModalOpen, setMatchModalOpen] = useState(false);
-  // 現状金額タブ
+  // currentModeTab は後方互換のために残す（使用箇所を新変数に移行済み）
   const [currentModeTab, setCurrentModeTab] = useState<"exec"|"contract"|"diff">("exec");
 
   const [hotelSearchQuery, setHotelSearchQuery] = useState("");
@@ -1154,6 +1272,14 @@ function HotelDetailInner() {
       try {
         const contractRaw = localStorage.getItem(`current-contract-rc-${hotel.facilityNo}`);
         if (contractRaw) setContractEntry(JSON.parse(contractRaw));
+      } catch { /* ignore */ }
+      try {
+        const execMrRaw = localStorage.getItem(`current-exec-mr-${hotel.facilityNo}`);
+        if (execMrRaw) setExecMrEntry(JSON.parse(execMrRaw));
+      } catch { /* ignore */ }
+      try {
+        const contractMrRaw = localStorage.getItem(`current-contract-mr-${hotel.facilityNo}`);
+        if (contractMrRaw) setContractMrEntry(JSON.parse(contractMrRaw));
       } catch { /* ignore */ }
     }
   }, [hotel?.facilityNo, mode]);
@@ -1346,6 +1472,85 @@ function HotelDetailInner() {
       para: mergeSection(existing.para, incoming.para),
     };
   }
+
+  function mergeMeetingRoomEntry(
+    existing: MeetingRoomsDB[string] | null,
+    incoming: MeetingRoomsDB[string]
+  ): MeetingRoomsDB[string] {
+    if (!existing) return incoming;
+    const mergeSection = (
+      ex: MeetingRoomSection | null,
+      inc: MeetingRoomSection | null
+    ): MeetingRoomSection | null => {
+      if (!inc) return ex;
+      if (!ex) return inc;
+      const merged = [...ex.rooms];
+      for (const incRow of inc.rooms) {
+        const idx = merged.findIndex(
+          r => r.venueName === incRow.venueName && r.startDate === incRow.startDate
+        );
+        if (idx >= 0) { merged[idx] = incRow; } else { merged.push(incRow); }
+      }
+      return { ...inc, rooms: merged };
+    };
+    return {
+      hotelName: incoming.hotelName || existing.hotelName,
+      asia: mergeSection(existing.asia, incoming.asia),
+      para: mergeSection(existing.para, incoming.para),
+    };
+  }
+
+  const handleHotelLevelUpload = async (file: File, type: "exec" | "contract") => {
+    setHotelUploading(true);
+    setHotelUploadError(null);
+    setHotelUploadMsg(null);
+    const facilityNo = hotel?.facilityNo;
+    if (!facilityNo) {
+      setHotelUploadError("施設番号が設定されていません。先にホテル情報を編集してください。");
+      setHotelUploading(false);
+      return;
+    }
+    const saved: string[] = [];
+    try {
+      // 別紙1-1（客室確保費）
+      try {
+        const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
+        const rcResult = await parseRoomChargesFromPerHotelFile(file);
+        if (!("error" in rcResult)) {
+          const key = `current-${type}-rc-${facilityNo}`;
+          const existing = type === "exec" ? execEntry : contractEntry;
+          const merged = mergeRoomChargeEntry(existing, rcResult.entry);
+          localStorage.setItem(key, JSON.stringify(merged));
+          if (type === "exec") setExecEntry(merged);
+          else setContractEntry(merged);
+          saved.push("別紙1-1（客室確保費）");
+        }
+      } catch { /* シートなし */ }
+      // 別紙1-2（会議室等確保費）
+      try {
+        const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
+        const mrResult = await parseMeetingRoomsFromPerHotelFile(file);
+        if (!("error" in mrResult)) {
+          const key = `current-${type}-mr-${facilityNo}`;
+          const existing = type === "exec" ? execMrEntry : contractMrEntry;
+          const merged = mergeMeetingRoomEntry(existing, mrResult.entry);
+          localStorage.setItem(key, JSON.stringify(merged));
+          if (type === "exec") setExecMrEntry(merged);
+          else setContractMrEntry(merged);
+          saved.push("別紙1-2（会議室等確保費）");
+        }
+      } catch { /* シートなし */ }
+      if (saved.length === 0) {
+        setHotelUploadError("別紙1-1・別紙1-2のシートが見つかりませんでした。");
+      } else {
+        setHotelUploadMsg(`✓ 保存: ${saved.join("、")}`);
+      }
+    } catch (e) {
+      setHotelUploadError(String(e));
+    } finally {
+      setHotelUploading(false);
+    }
+  };
 
   const handleCurrentUpload = async (file: File, type: "exec" | "contract") => {
     const setter = type === "exec" ? setExecUploading : setContractUploading;
@@ -1700,6 +1905,26 @@ function HotelDetailInner() {
             </div>
           </div>
 
+          {/* ホテル単位アップロード（現状金額モード専用） */}
+          {mode === "current" && (
+            <div className="mx-4 sm:mx-5 mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
+              <span className="text-sm font-semibold text-gray-700">ホテル単位アップロード</span>
+              <span className="text-xs text-gray-500">別紙1-1・1-2が同一ファイルの場合はこちらから一括登録できます</span>
+              <label className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-lg transition-colors ${hotelUploading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}>
+                {hotelUploading ? "処理中..." : "↑ 予算執行額"}
+                <input type="file" accept=".xlsx,.xls" className="hidden" disabled={hotelUploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleHotelLevelUpload(f, "exec"); e.target.value = ""; }} />
+              </label>
+              <label className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-lg transition-colors ${hotelUploading ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}>
+                {hotelUploading ? "処理中..." : "↑ 契約額"}
+                <input type="file" accept=".xlsx,.xls" className="hidden" disabled={hotelUploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleHotelLevelUpload(f, "contract"); e.target.value = ""; }} />
+              </label>
+              {hotelUploadError && <span className="text-xs text-red-500">{hotelUploadError}</span>}
+              {hotelUploadMsg && <span className="text-xs text-green-600">{hotelUploadMsg}</span>}
+            </div>
+          )}
+
           {/* Content */}
           <div className="p-4 sm:p-5">
             {activeCategory === "all" ? (
@@ -1715,51 +1940,38 @@ function HotelDetailInner() {
                 {activeCategory === "客室確保費" && (
                   <>
                     {mode === "current" ? (
-                      <div className="space-y-4">
-                        {/* タブ */}
-                        <div className="flex gap-2 border-b border-gray-200">
-                          {(["exec","contract","diff"] as const).map(t => (
-                            <button key={t} onClick={() => setCurrentModeTab(t)}
-                              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${currentModeTab===t?"border-blue-600 text-blue-600":"border-transparent text-gray-500 hover:text-gray-700"}`}>
-                              {t==="exec"?"予算執行額":t==="contract"?"契約額":"差額比較"}
-                            </button>
-                          ))}
-                        </div>
-                        {/* 予算執行額タブ */}
-                        {currentModeTab === "exec" && (
+                      <CurrentModeExecContractTabs
+                        tab={rcSubTab} setTab={setRcSubTab}
+                        execContent={
                           <div>
                             <div className="flex items-center gap-3 mb-3">
-                              <span className="text-sm font-medium text-gray-700">予算執行額 Excelアップロード（別紙1-1形式）</span>
-                              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                                {execUploading ? "処理中..." : "↑ アップロード"}
+                              <span className="text-xs text-gray-500">個別アップロード（別紙1-1）</span>
+                              <label className={`cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded ${execUploading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"}`}>
+                                {execUploading ? "処理中..." : "↑ 予算執行額"}
                                 <input type="file" accept=".xlsx,.xls" className="hidden" disabled={execUploading}
-                                  onChange={e => { const f = e.target.files?.[0]; if(f) handleCurrentUpload(f,"exec"); e.target.value=""; }} />
+                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleCurrentUpload(f, "exec"); e.target.value = ""; }} />
                               </label>
                               {execUploadError && <span className="text-xs text-red-500">{execUploadError}</span>}
                             </div>
                             {execEntry ? <RoomChargeInTab chargeData={execEntry} /> : <p className="text-sm text-gray-400">データなし</p>}
                           </div>
-                        )}
-                        {/* 契約額タブ */}
-                        {currentModeTab === "contract" && (
+                        }
+                        contractContent={
                           <div>
                             <div className="flex items-center gap-3 mb-3">
-                              <span className="text-sm font-medium text-gray-700">契約額 Excelアップロード（別紙1-1形式）</span>
-                              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
-                                {contractUploading ? "処理中..." : "↑ アップロード"}
+                              <span className="text-xs text-gray-500">個別アップロード（別紙1-1）</span>
+                              <label className={`cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded ${contractUploading ? "bg-green-400" : "bg-green-600 hover:bg-green-700"}`}>
+                                {contractUploading ? "処理中..." : "↑ 契約額"}
                                 <input type="file" accept=".xlsx,.xls" className="hidden" disabled={contractUploading}
-                                  onChange={e => { const f = e.target.files?.[0]; if(f) handleCurrentUpload(f,"contract"); e.target.value=""; }} />
+                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleCurrentUpload(f, "contract"); e.target.value = ""; }} />
                               </label>
                               {contractUploadError && <span className="text-xs text-red-500">{contractUploadError}</span>}
                             </div>
                             {contractEntry ? <RoomChargeInTab chargeData={contractEntry} /> : <p className="text-sm text-gray-400">データなし</p>}
                           </div>
-                        )}
-                        {/* 差額比較タブ */}
-                        {currentModeTab === "diff" && (
-                          <CurrentModeDiffView execEntry={execEntry} contractEntry={contractEntry} />
-                        )}
-                      </div>
+                        }
+                        diffContent={<CurrentModeDiffView execEntry={execEntry} contractEntry={contractEntry} />}
+                      />
                     ) : (
                       <>
                         <UploadButton
@@ -1776,26 +1988,90 @@ function HotelDetailInner() {
                 )}
                 {activeCategory === "会議室等確保費" && (
                   <>
-                    <UploadButton
-                      label="別紙1-2 Excelアップロード"
-                      onFile={handleMrUpload}
-                      uploading={mrUploading}
-                      uploadError={mrUploadError}
-                      uploadSuccess={perHotelMrEntry != null}
-                    />
-                    <MeetingRoomInTab meetingData={meetingRoomData} />
+                    {mode === "current" ? (
+                      <CurrentModeExecContractTabs
+                        tab={mrSubTab} setTab={setMrSubTab}
+                        execContent={
+                          <div>
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="text-xs text-gray-500">個別アップロード（別紙1-2）</span>
+                              <label className={`cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded bg-blue-600 hover:bg-blue-700`}>
+                                ↑ 予算執行額
+                                <input type="file" accept=".xlsx,.xls" className="hidden"
+                                  onChange={async e => {
+                                    const f = e.target.files?.[0]; if (!f || !hotel?.facilityNo) return;
+                                    const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
+                                    const r = await parseMeetingRoomsFromPerHotelFile(f);
+                                    if ("error" in r) return;
+                                    const merged = mergeMeetingRoomEntry(execMrEntry, r.entry);
+                                    localStorage.setItem(`current-exec-mr-${hotel.facilityNo}`, JSON.stringify(merged));
+                                    setExecMrEntry(merged);
+                                    e.target.value = "";
+                                  }} />
+                              </label>
+                            </div>
+                            {execMrEntry ? <MeetingRoomInTab meetingData={execMrEntry} /> : <p className="text-sm text-gray-400">データなし</p>}
+                          </div>
+                        }
+                        contractContent={
+                          <div>
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="text-xs text-gray-500">個別アップロード（別紙1-2）</span>
+                              <label className={`cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded bg-green-600 hover:bg-green-700`}>
+                                ↑ 契約額
+                                <input type="file" accept=".xlsx,.xls" className="hidden"
+                                  onChange={async e => {
+                                    const f = e.target.files?.[0]; if (!f || !hotel?.facilityNo) return;
+                                    const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
+                                    const r = await parseMeetingRoomsFromPerHotelFile(f);
+                                    if ("error" in r) return;
+                                    const merged = mergeMeetingRoomEntry(contractMrEntry, r.entry);
+                                    localStorage.setItem(`current-contract-mr-${hotel.facilityNo}`, JSON.stringify(merged));
+                                    setContractMrEntry(merged);
+                                    e.target.value = "";
+                                  }} />
+                              </label>
+                            </div>
+                            {contractMrEntry ? <MeetingRoomInTab meetingData={contractMrEntry} /> : <p className="text-sm text-gray-400">データなし</p>}
+                          </div>
+                        }
+                        diffContent={<CurrentModeMrDiffView execEntry={execMrEntry} contractEntry={contractMrEntry} />}
+                      />
+                    ) : (
+                      <>
+                        <UploadButton
+                          label="別紙1-2 Excelアップロード"
+                          onFile={handleMrUpload}
+                          uploading={mrUploading}
+                          uploadError={mrUploadError}
+                          uploadSuccess={perHotelMrEntry != null}
+                        />
+                        <MeetingRoomInTab meetingData={meetingRoomData} />
+                      </>
+                    )}
                   </>
                 )}
                 {activeCategory === "飲食費" && (
                   <>
-                    <UploadButton
-                      label="別紙2 Excelアップロード"
-                      onFile={handleMcUpload}
-                      uploading={mcUploading}
-                      uploadError={mcUploadError}
-                      uploadSuccess={perHotelMcEntry != null}
-                    />
-                    <MealCostInTab mealData={mealCostData} />
+                    {mode === "current" ? (
+                      <CurrentModeExecContractTabs
+                        tab={otherSubTab} setTab={setOtherSubTab} hideDiff
+                        execContent={<p className="text-sm text-gray-400 py-4">飲食費の執行額フォーマットは未設定です。次のステップで形式を指定してアップロードできるようになります。</p>}
+                        contractContent={<p className="text-sm text-gray-400 py-4">飲食費の契約額フォーマットは未設定です。次のステップで形式を指定してアップロードできるようになります。</p>}
+                        diffContent={null}
+                      />
+                    ) : (
+                      <>
+                        <UploadButton
+                          label="別紙2 Excelアップロード"
+                          onFile={handleMcUpload}
+                          uploading={mcUploading}
+                          uploadError={mcUploadError}
+                          uploadSuccess={perHotelMcEntry != null}
+                        />
+                        <MealCostInTab mealData={mealCostData} />
+                      </>
+                    )}
                   </>
                 )}
                 <SingleCategoryView
