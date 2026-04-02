@@ -1106,6 +1106,14 @@ type SheetPending = {
   action: "hotelExec" | "hotelContract" | "rc" | "mr" | "currentExec" | "currentContract" | "currentMrExec" | "currentMrContract";
 };
 
+type ReplacePending = {
+  action: "rc" | "mr" | "currentExec" | "currentContract" | "currentMrExec" | "currentMrContract" | "hotelExec" | "hotelContract";
+  rcIncoming: RoomChargesDB[string] | null;
+  rcExisting: RoomChargesDB[string] | null;
+  mrIncoming: MeetingRoomsDB[string] | null;
+  mrExisting: MeetingRoomsDB[string] | null;
+};
+
 function HotelDetailInner() {
   const searchParams = useSearchParams();
   const id = searchParams?.get("id") ?? "";
@@ -1218,6 +1226,7 @@ function HotelDetailInner() {
   const [mrSubTab, setMrSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [otherSubTab, setOtherSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [sheetPending, setSheetPending] = useState<SheetPending | null>(null);
+  const [replacePending, setReplacePending] = useState<ReplacePending | null>(null);
   // 個別アップロード（後方互換）
   const [execUploading, setExecUploading] = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
@@ -1421,6 +1430,10 @@ function HotelDetailInner() {
       const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
       const result = await parseRoomChargesFromPerHotelFile(file, specificSheet);
       if ("error" in result) { setRcUploadError(result.error); return; }
+      if (perHotelRcEntry) {
+        setReplacePending({ action: "rc", rcIncoming: result.entry, rcExisting: perHotelRcEntry, mrIncoming: null, mrExisting: null });
+        return;
+      }
       localStorage.setItem(`room-charges-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
       setPerHotelRcEntry(result.entry);
     } catch (e) {
@@ -1448,6 +1461,10 @@ function HotelDetailInner() {
       const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
       const result = await parseMeetingRoomsFromPerHotelFile(file, specificSheet);
       if ("error" in result) { setMrUploadError(result.error); return; }
+      if (perHotelMrEntry) {
+        setReplacePending({ action: "mr", rcIncoming: null, rcExisting: null, mrIncoming: result.entry, mrExisting: perHotelMrEntry });
+        return;
+      }
       localStorage.setItem(`meeting-rooms-hotel-${facilityNoKey}`, JSON.stringify(result.entry));
       setPerHotelMrEntry(result.entry);
     } catch (e) {
@@ -1541,45 +1558,49 @@ function HotelDetailInner() {
       setHotelUploading(false);
       return;
     }
-    const saved: string[] = [];
     try {
-      // 別紙1-1（客室確保費）
+      // まずパースのみ実行
+      let rcIncoming: RoomChargesDB[string] | null = null;
+      let mrIncoming: MeetingRoomsDB[string] | null = null;
       if (rcSheet !== null) {
         try {
           const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
-          const rcResult = await parseRoomChargesFromPerHotelFile(file, rcSheet || undefined);
-          if (!("error" in rcResult)) {
-            const key = `current-${type}-rc-${facilityNo}`;
-            const existing = type === "exec" ? execEntry : contractEntry;
-            const merged = mergeRoomChargeEntry(existing, rcResult.entry);
-            localStorage.setItem(key, JSON.stringify(merged));
-            if (type === "exec") setExecEntry(merged);
-            else setContractEntry(merged);
-            saved.push("別紙1-1（客室確保費）");
-          }
+          const r = await parseRoomChargesFromPerHotelFile(file, rcSheet || undefined);
+          if (!("error" in r)) rcIncoming = r.entry;
         } catch { /* シートなし */ }
       }
-      // 別紙1-2（会議室等確保費）
       if (mrSheet !== null) {
         try {
           const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
-          const mrResult = await parseMeetingRoomsFromPerHotelFile(file, mrSheet || undefined);
-          if (!("error" in mrResult)) {
-            const key = `current-${type}-mr-${facilityNo}`;
-            const existing = type === "exec" ? execMrEntry : contractMrEntry;
-            const merged = mergeMeetingRoomEntry(existing, mrResult.entry);
-            localStorage.setItem(key, JSON.stringify(merged));
-            if (type === "exec") setExecMrEntry(merged);
-            else setContractMrEntry(merged);
-            saved.push("別紙1-2（会議室等確保費）");
-          }
+          const r = await parseMeetingRoomsFromPerHotelFile(file, mrSheet || undefined);
+          if (!("error" in r)) mrIncoming = r.entry;
         } catch { /* シートなし */ }
       }
-      if (saved.length === 0) {
+      if (!rcIncoming && !mrIncoming) {
         setHotelUploadError("別紙1-1・別紙1-2のシートが見つかりませんでした。");
-      } else {
-        setHotelUploadMsg(`✓ 保存: ${saved.join("、")}`);
+        return;
       }
+      // 既存データがある場合は比較ダイアログを表示
+      const rcExisting = type === "exec" ? execEntry : contractEntry;
+      const mrExisting = type === "exec" ? execMrEntry : contractMrEntry;
+      if ((rcIncoming && rcExisting) || (mrIncoming && mrExisting)) {
+        const action = type === "exec" ? "hotelExec" : "hotelContract";
+        setReplacePending({ action, rcIncoming, rcExisting, mrIncoming, mrExisting });
+        return;
+      }
+      // 既存データなし→そのまま保存
+      const saved: string[] = [];
+      if (rcIncoming) {
+        localStorage.setItem(`current-${type}-rc-${facilityNo}`, JSON.stringify(rcIncoming));
+        if (type === "exec") setExecEntry(rcIncoming); else setContractEntry(rcIncoming);
+        saved.push("別紙1-1（客室確保費）");
+      }
+      if (mrIncoming) {
+        localStorage.setItem(`current-${type}-mr-${facilityNo}`, JSON.stringify(mrIncoming));
+        if (type === "exec") setExecMrEntry(mrIncoming); else setContractMrEntry(mrIncoming);
+        saved.push("別紙1-2（会議室等確保費）");
+      }
+      setHotelUploadMsg(`✓ 保存: ${saved.join("、")}`);
     } catch (e) {
       setHotelUploadError(String(e));
     } finally {
@@ -1614,9 +1635,14 @@ function HotelDetailInner() {
         setMatchModalOpen(true);
         return;
       }
-      // 照合成功: smart merge して保存
-      const storageKey = `current-${type}-rc-${facilityNo}`;
       const existing = type === "exec" ? execEntry : contractEntry;
+      // 既存データがある場合は比較ダイアログを表示
+      if (existing) {
+        const action = type === "exec" ? "currentExec" : "currentContract";
+        setReplacePending({ action, rcIncoming: result.entry, rcExisting: existing, mrIncoming: null, mrExisting: null });
+        return;
+      }
+      const storageKey = `current-${type}-rc-${facilityNo}`;
       const merged = mergeRoomChargeEntry(existing, result.entry);
       localStorage.setItem(storageKey, JSON.stringify(merged));
       if (type === "exec") setExecEntry(merged);
@@ -1645,15 +1671,16 @@ function HotelDetailInner() {
       const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
       const r = await parseMeetingRoomsFromPerHotelFile(file, specificSheet);
       if ("error" in r) return;
-      if (type === "exec") {
-        const merged = mergeMeetingRoomEntry(execMrEntry, r.entry);
-        localStorage.setItem(`current-exec-mr-${hotel.facilityNo}`, JSON.stringify(merged));
-        setExecMrEntry(merged);
-      } else {
-        const merged = mergeMeetingRoomEntry(contractMrEntry, r.entry);
-        localStorage.setItem(`current-contract-mr-${hotel.facilityNo}`, JSON.stringify(merged));
-        setContractMrEntry(merged);
+      const existing = type === "exec" ? execMrEntry : contractMrEntry;
+      // 既存データがある場合は比較ダイアログを表示
+      if (existing) {
+        const action = type === "exec" ? "currentMrExec" : "currentMrContract";
+        setReplacePending({ action, rcIncoming: null, rcExisting: null, mrIncoming: r.entry, mrExisting: existing });
+        return;
       }
+      const merged = mergeMeetingRoomEntry(existing, r.entry);
+      localStorage.setItem(`current-${type}-mr-${hotel.facilityNo}`, JSON.stringify(merged));
+      if (type === "exec") setExecMrEntry(merged); else setContractMrEntry(merged);
     } catch { /* ignore */ }
   };
 
@@ -1665,6 +1692,50 @@ function HotelDetailInner() {
       setSheetPending({ file, rcSheets: [], mrSheets, selectedRc: null, selectedMr: mrSheets[0], action });
     } else {
       await handleCurrentMrUpload(file, type, mrSheets[0]);
+    }
+  };
+
+  const handleReplaceConfirm = () => {
+    if (!replacePending) return;
+    const { action, rcIncoming, mrIncoming } = replacePending;
+    const facilityNo = hotel?.facilityNo;
+    setReplacePending(null);
+    if (action === "rc" && rcIncoming && facilityNoKey) {
+      localStorage.setItem(`room-charges-hotel-${facilityNoKey}`, JSON.stringify(rcIncoming));
+      setPerHotelRcEntry(rcIncoming);
+    } else if (action === "mr" && mrIncoming && facilityNoKey) {
+      localStorage.setItem(`meeting-rooms-hotel-${facilityNoKey}`, JSON.stringify(mrIncoming));
+      setPerHotelMrEntry(mrIncoming);
+    } else if ((action === "currentExec" || action === "currentContract") && rcIncoming && facilityNo) {
+      const type = action === "currentExec" ? "exec" : "contract";
+      const existing = type === "exec" ? execEntry : contractEntry;
+      const merged = mergeRoomChargeEntry(existing, rcIncoming);
+      localStorage.setItem(`current-${type}-rc-${facilityNo}`, JSON.stringify(merged));
+      if (type === "exec") setExecEntry(merged); else setContractEntry(merged);
+    } else if ((action === "currentMrExec" || action === "currentMrContract") && mrIncoming && facilityNo) {
+      const type = action === "currentMrExec" ? "exec" : "contract";
+      const existing = type === "exec" ? execMrEntry : contractMrEntry;
+      const merged = mergeMeetingRoomEntry(existing, mrIncoming);
+      localStorage.setItem(`current-${type}-mr-${facilityNo}`, JSON.stringify(merged));
+      if (type === "exec") setExecMrEntry(merged); else setContractMrEntry(merged);
+    } else if ((action === "hotelExec" || action === "hotelContract") && facilityNo) {
+      const type = action === "hotelExec" ? "exec" : "contract";
+      const saved: string[] = [];
+      if (rcIncoming) {
+        const existing = type === "exec" ? execEntry : contractEntry;
+        const merged = mergeRoomChargeEntry(existing, rcIncoming);
+        localStorage.setItem(`current-${type}-rc-${facilityNo}`, JSON.stringify(merged));
+        if (type === "exec") setExecEntry(merged); else setContractEntry(merged);
+        saved.push("別紙1-1（客室確保費）");
+      }
+      if (mrIncoming) {
+        const existing = type === "exec" ? execMrEntry : contractMrEntry;
+        const merged = mergeMeetingRoomEntry(existing, mrIncoming);
+        localStorage.setItem(`current-${type}-mr-${facilityNo}`, JSON.stringify(merged));
+        if (type === "exec") setExecMrEntry(merged); else setContractMrEntry(merged);
+        saved.push("別紙1-2（会議室等確保費）");
+      }
+      if (saved.length > 0) setHotelUploadMsg(`✓ 保存: ${saved.join("、")}`);
     }
   };
 
@@ -2205,6 +2276,112 @@ function HotelDetailInner() {
           onClose={() => setHotelEditOpen(false)}
         />
       )}
+
+      {/* データ比較・置き換え確認ダイアログ */}
+      {replacePending && (() => {
+        const { rcIncoming, rcExisting, mrIncoming, mrExisting } = replacePending;
+        const rcLabel = replacePending.action === "rc" ? "別紙1-1（客室確保費）" :
+          replacePending.action === "mr" ? "" :
+          replacePending.action.includes("Mr") ? "" : "客室確保費（別紙1-1）";
+        const mrLabel = replacePending.action === "mr" ? "別紙1-2（会議室等確保費）" :
+          replacePending.action.includes("Mr") ? "会議室等確保費（別紙1-2）" : "会議室等確保費（別紙1-2）";
+        const showRc = rcIncoming !== null && rcExisting !== null;
+        const showMr = mrIncoming !== null && mrExisting !== null;
+        const fmtN = (v: number | null | undefined) => v == null ? "—" : v.toLocaleString("ja-JP") + "円";
+        const rcSummary = (entry: RoomChargesDB[string] | null) => {
+          if (!entry) return null;
+          return (
+            <div>
+              <div className="text-xs font-medium text-gray-700 mb-1 truncate">{entry.hotelName || "—"}</div>
+              {(["asia", "para"] as const).map(k => {
+                const s = entry[k];
+                if (!s) return null;
+                return (
+                  <div key={k} className="mb-2">
+                    <div className="text-xs font-semibold text-blue-600 mb-0.5">{k === "asia" ? "アジア競技大会" : "パラ競技大会"}</div>
+                    <div className="text-xs text-gray-600 space-y-0.5">
+                      <div>客室タイプ: <span className="font-medium text-gray-800">{s.rooms?.length ?? 0}件</span></div>
+                      <div>1日あたり: <span className="font-medium text-gray-800">{fmtN(s.dailyCost)}</span></div>
+                      <div>合計（税込）: <span className="font-medium text-gray-800">{fmtN(s.totalCostTax ?? s.totalCost)}</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        };
+        const mrSummary = (entry: MeetingRoomsDB[string] | null) => {
+          if (!entry) return null;
+          return (
+            <div>
+              <div className="text-xs font-medium text-gray-700 mb-1 truncate">{entry.hotelName || "—"}</div>
+              {(["asia", "para"] as const).map(k => {
+                const s = entry[k];
+                if (!s) return null;
+                return (
+                  <div key={k} className="mb-2">
+                    <div className="text-xs font-semibold text-blue-600 mb-0.5">{k === "asia" ? "アジア競技大会" : "パラ競技大会"}</div>
+                    <div className="text-xs text-gray-600 space-y-0.5">
+                      <div>会場数: <span className="font-medium text-gray-800">{s.rooms?.length ?? 0}件</span></div>
+                      <div>合計（税込）: <span className="font-medium text-gray-800">{fmtN(s.totalCostTax ?? s.totalCost)}</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        };
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setReplacePending(null)}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="px-6 pt-5 pb-4 border-b border-gray-100">
+                <h3 className="text-base font-bold text-gray-900">既存データがあります。上書きしますか？</h3>
+                <p className="text-xs text-gray-400 mt-0.5">取り込むと既存データに新しいデータがマージされます。内容を確認してください。</p>
+              </div>
+              <div className="px-6 py-4 space-y-5">
+                {showRc && (
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">{rcLabel || "別紙1-1（客室確保費）"}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="text-xs text-gray-400 font-medium mb-2">現在のデータ</div>
+                        {rcSummary(rcExisting)}
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <div className="text-xs text-blue-500 font-medium mb-2">新しいデータ</div>
+                        {rcSummary(rcIncoming)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {showMr && (
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded">{mrLabel}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="text-xs text-gray-400 font-medium mb-2">現在のデータ</div>
+                        {mrSummary(mrExisting)}
+                      </div>
+                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                        <div className="text-xs text-purple-500 font-medium mb-2">新しいデータ</div>
+                        {mrSummary(mrIncoming)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+                <button onClick={() => setReplacePending(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">キャンセル</button>
+                <button onClick={handleReplaceConfirm} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">上書きする</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* シート選択ダイアログ */}
       {sheetPending && (
