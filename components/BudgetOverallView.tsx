@@ -149,7 +149,7 @@ const GRAND_TOTAL = {
   total: 28_929_665_120,
 };
 
-type Tab = "hotels" | "overall" | "budget" | "execution" | "contract" | "version" | "meal";
+type Tab = "hotels" | "overall" | "budget" | "version" | "meal";
 
 interface Props {
   onNavigate: (tab: Tab) => void;
