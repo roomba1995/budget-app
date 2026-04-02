@@ -15,6 +15,7 @@ interface Props {
   roomChargeDb?: RoomChargesDB | null;
   meetingRoomDb?: MeetingRoomsDB | null;
   overallBudgetTotal?: number;
+  hideBreakdown?: boolean;
 }
 
 const EXCEL_CATEGORIES = ["客室確保費", "会議室等確保費"] as const;
@@ -42,7 +43,7 @@ function getExcelActuals(
   return { asia, para };
 }
 
-export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, overallBudgetTotal }: Props) {
+export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, overallBudgetTotal, hideBreakdown }: Props) {
   const totalBudget = hotels.reduce(
     (s, h) => s + h.costItems.reduce((ss, i) => ss + i.budgetAmount, 0),
     0
@@ -193,7 +194,7 @@ export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, ov
       </div>
 
       {/* Breakdown panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {!hideBreakdown && <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Category breakdown */}
         {categoryTotals.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -285,7 +286,7 @@ export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, ov
             </div>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
