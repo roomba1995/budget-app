@@ -14,6 +14,7 @@ interface Props {
   hotels: Hotel[];
   roomChargeDb?: RoomChargesDB | null;
   meetingRoomDb?: MeetingRoomsDB | null;
+  overallBudgetTotal?: number;
 }
 
 const EXCEL_CATEGORIES = ["客室確保費", "会議室等確保費"] as const;
@@ -41,7 +42,7 @@ function getExcelActuals(
   return { asia, para };
 }
 
-export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb }: Props) {
+export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb, overallBudgetTotal }: Props) {
   const totalBudget = hotels.reduce(
     (s, h) => s + h.costItems.reduce((ss, i) => ss + i.budgetAmount, 0),
     0
@@ -136,8 +137,8 @@ export default function SummarySection({ hotels, roomChargeDb, meetingRoomDb }: 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryCard
           label="予算合計"
-          value={formatCurrency(totalBudget)}
-          sub={`${hotels.length}ホテル`}
+          value={formatCurrency(overallBudgetTotal ?? totalBudget)}
+          sub={overallBudgetTotal ? `${hotels.length}ホテル・全体予算管理より` : `${hotels.length}ホテル`}
           borderColor="border-blue-200"
           bgColor="bg-blue-50"
         />
