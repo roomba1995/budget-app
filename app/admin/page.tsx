@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useHotels, MergeAlert } from "@/hooks/useHotels";
 import { Hotel, GROUP_COLORS, CONTRACT_STATUS_COLORS, formatDateRange } from "@/types";
 import HotelFormModal from "@/components/HotelFormModal";
@@ -276,6 +277,7 @@ const STORAGE_KEYS = {
 } as const;
 
 export default function AdminPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("budget");
 
   useEffect(() => {
@@ -570,7 +572,7 @@ export default function AdminPage() {
       if (allocMatchRaw) localStorage.setItem("current-alloc-match-v1", allocMatchRaw);
 
       alert("コピーが完了しました。現状金額モードへ移動します。");
-      window.location.href = "/?mode=current";
+      router.push("/?mode=current");
     } catch (e) {
       alert("コピーに失敗しました: " + String(e));
     }
