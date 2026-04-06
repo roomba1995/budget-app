@@ -1419,8 +1419,18 @@ function HotelDetailInner() {
 
   const facilityNoKey = hotel?.facilityNo ? String(parseInt(hotel.facilityNo, 10)) : null;
 
-  // バージョン名 = ファイル名（拡張子除く）
-  const getVersionName = (file: File): string => file.name.replace(/\.(xlsx|xls)$/i, "");
+  // バージョン名をファイル名から抽出
+  // 優先度: 1) 予算執行〇〇  2) yyyymmdd契約/差し替え  3) ファイル名全体
+  const getVersionName = (file: File): string => {
+    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
+    // 予算執行 + 数字（半角・全角）
+    const execMatch = base.match(/予算執行[\d０-９]+/);
+    if (execMatch) return execMatch[0];
+    // yyyymmdd + 契約 or 差し替え（区切り文字任意）
+    const contractMatch = base.match(/\d{4}[/_-]?\d{2}[/_-]?\d{2}(?:契約|差し替え)/);
+    if (contractMatch) return contractMatch[0];
+    return base;
+  };
 
   // バージョン追加 or 同名更新
   function addOrUpdateVersion<T>(versions: VersionedEntry<T>[], versionName: string, data: T): VersionedEntry<T>[] {
