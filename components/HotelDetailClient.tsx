@@ -1112,6 +1112,15 @@ type VersionedEntry<T> = {
   data: T;
 };
 
+type MatchPending = {
+  versionName: string;
+  detectedName: string | null;       // Excelから読み取った施設名
+  suggestedHotelId: string | null;   // 自動マッチング結果
+  rcIncoming: RoomChargesDB[string] | null;
+  mrIncoming: MeetingRoomsDB[string] | null;
+  uploadType: "exec" | "contract";
+};
+
 function HotelDetailInner() {
   const searchParams = useSearchParams();
   const id = searchParams?.get("id") ?? "";
@@ -1228,6 +1237,8 @@ function HotelDetailInner() {
   const [mrSubTab, setMrSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [otherSubTab, setOtherSubTab] = useState<"exec"|"contract"|"diff">("exec");
   const [sheetPending, setSheetPending] = useState<SheetPending | null>(null);
+  const [matchPending, setMatchPending] = useState<MatchPending | null>(null);
+  const [matchSelectedHotelId, setMatchSelectedHotelId] = useState<string>("");
   // 個別アップロード（後方互換）
   const [execUploading, setExecUploading] = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
@@ -1419,6 +1430,24 @@ function HotelDetailInner() {
 
   const facilityNoKey = hotel?.facilityNo ? String(parseInt(hotel.facilityNo, 10)) : null;
 
+  // ホテル名正規化（スペース除去・小文字化）
+  const normalizeHotelName = (s: string) => s.replace(/[\s　]/g, "").toLowerCase();
+
+  // Excelから読み取った施設名でホテルリストを検索（ホテルIDを返す）
+  const findBestMatchHotel = (detectedName: string | null): string | null => {
+    if (!detectedName) return hotel?.id ?? null;
+    const nd = normalizeHotelName(detectedName);
+    // 完全一致
+    const exact = hotels.find(h => normalizeHotelName(h.name) === nd);
+    if (exact) return exact.id;
+    // 部分一致（検出名がホテル名を含む、またはその逆）
+    const partial = hotels.find(h => {
+      const nh = normalizeHotelName(h.name);
+      return nd.includes(nh) || nh.includes(nd);
+    });
+    return partial?.id ?? hotel?.id ?? null;
+  };
+
   // バージョン名をファイル名から抽出
   // 優先度: 1) 予算執行〇〇  2) yyyymmdd契約/差し替え  3) ファイル名全体
   const getVersionName = (file: File): string => {
@@ -1549,24 +1578,10 @@ function HotelDetailInner() {
         return;
       }
       const versionName = getVersionName(file);
-      const saved: string[] = [];
-      if (rcIncoming) {
-        const currVersions = type === "exec" ? execRcVersions : contractRcVersions;
-        const newVersions = addOrUpdateVersion(currVersions, versionName, rcIncoming);
-        localStorage.setItem(`current-${type}-rc-versions-${facilityNo}`, JSON.stringify(newVersions));
-        if (type === "exec") { setExecRcVersions(newVersions); setExecRcSelectedIdx(null); }
-        else { setContractRcVersions(newVersions); setContractRcSelectedIdx(null); }
-        saved.push("別紙1-1（客室確保費）");
-      }
-      if (mrIncoming) {
-        const currVersions = type === "exec" ? execMrVersions : contractMrVersions;
-        const newVersions = addOrUpdateVersion(currVersions, versionName, mrIncoming);
-        localStorage.setItem(`current-${type}-mr-versions-${facilityNo}`, JSON.stringify(newVersions));
-        if (type === "exec") { setExecMrVersions(newVersions); setExecMrSelectedIdx(null); }
-        else { setContractMrVersions(newVersions); setContractMrSelectedIdx(null); }
-        saved.push("別紙1-2（会議室等確保費）");
-      }
-      setHotelUploadMsg(`✓ 保存: ${saved.join("、")}（バージョン: ${versionName}）`);
+      const detectedName = rcIncoming?.hotelName || mrIncoming?.hotelName || null;
+      const suggestedHotelId = findBestMatchHotel(detectedName);
+      setMatchPending({ versionName, detectedName, suggestedHotelId, rcIncoming, mrIncoming, uploadType: type });
+      setMatchSelectedHotelId(suggestedHotelId ?? hotel?.id ?? "");
     } catch (e) {
       setHotelUploadError(String(e));
     } finally {
@@ -1590,23 +1605,14 @@ function HotelDetailInner() {
     const errSetter = type === "exec" ? setExecUploadError : setContractUploadError;
     setter(true); errSetter(null);
     try {
-      const { parseRoomChargesFromPerHotelFile, extractHotelNameFromExcel } = await import("@/lib/parseRoomCharges");
+      const { parseRoomChargesFromPerHotelFile } = await import("@/lib/parseRoomCharges");
       const result = await parseRoomChargesFromPerHotelFile(file, specificSheet);
       if ("error" in result) { errSetter(result.error); return; }
-      const facilityNo = hotel?.facilityNo;
-      // facilityNo未設定の場合は照合ダイアログを出す
-      if (!facilityNo) {
-        const detectedName = await extractHotelNameFromExcel(file);
-        setPendingUploadData({ entry: result.entry, type, detectedName });
-        setMatchModalOpen(true);
-        return;
-      }
       const versionName = getVersionName(file);
-      const currVersions = type === "exec" ? execRcVersions : contractRcVersions;
-      const newVersions = addOrUpdateVersion(currVersions, versionName, result.entry);
-      localStorage.setItem(`current-${type}-rc-versions-${facilityNo}`, JSON.stringify(newVersions));
-      if (type === "exec") { setExecRcVersions(newVersions); setExecRcSelectedIdx(null); }
-      else { setContractRcVersions(newVersions); setContractRcSelectedIdx(null); }
+      const detectedName = result.entry.hotelName || null;
+      const suggestedHotelId = findBestMatchHotel(detectedName);
+      setMatchPending({ versionName, detectedName, suggestedHotelId, rcIncoming: result.entry, mrIncoming: null, uploadType: type });
+      setMatchSelectedHotelId(suggestedHotelId ?? hotel?.id ?? "");
     } catch (e) {
       errSetter(String(e));
     } finally {
@@ -1626,17 +1632,15 @@ function HotelDetailInner() {
   };
 
   const handleCurrentMrUpload = async (file: File, type: "exec" | "contract", specificSheet?: string) => {
-    if (!hotel?.facilityNo) return;
     try {
       const { parseMeetingRoomsFromPerHotelFile } = await import("@/lib/parseMeetingRooms");
       const r = await parseMeetingRoomsFromPerHotelFile(file, specificSheet);
       if ("error" in r) return;
       const versionName = getVersionName(file);
-      const currVersions = type === "exec" ? execMrVersions : contractMrVersions;
-      const newVersions = addOrUpdateVersion(currVersions, versionName, r.entry);
-      localStorage.setItem(`current-${type}-mr-versions-${hotel.facilityNo}`, JSON.stringify(newVersions));
-      if (type === "exec") { setExecMrVersions(newVersions); setExecMrSelectedIdx(null); }
-      else { setContractMrVersions(newVersions); setContractMrSelectedIdx(null); }
+      const detectedName = r.entry.hotelName || null;
+      const suggestedHotelId = findBestMatchHotel(detectedName);
+      setMatchPending({ versionName, detectedName, suggestedHotelId, rcIncoming: null, mrIncoming: r.entry, uploadType: type });
+      setMatchSelectedHotelId(suggestedHotelId ?? hotel?.id ?? "");
     } catch { /* ignore */ }
   };
 
@@ -1649,6 +1653,53 @@ function HotelDetailInner() {
     } else {
       await handleCurrentMrUpload(file, type, mrSheets[0]);
     }
+  };
+
+  const handleMatchConfirm = () => {
+    if (!matchPending || !matchSelectedHotelId) return;
+    const { versionName, rcIncoming, mrIncoming, uploadType } = matchPending;
+    const targetHotel = hotels.find(h => h.id === matchSelectedHotelId);
+    if (!targetHotel?.facilityNo) return;
+    const facilityNo = targetHotel.facilityNo;
+    const isCurrentHotel = targetHotel.id === hotel?.id;
+    const saved: string[] = [];
+
+    if (rcIncoming) {
+      const storageKey = `current-${uploadType}-rc-versions-${facilityNo}`;
+      let currVersions: VersionedEntry<RoomChargesDB[string]>[] = [];
+      if (isCurrentHotel) {
+        currVersions = uploadType === "exec" ? execRcVersions : contractRcVersions;
+      } else {
+        try { const raw = localStorage.getItem(storageKey); if (raw) currVersions = JSON.parse(raw); } catch { /* ignore */ }
+      }
+      const newVersions = addOrUpdateVersion(currVersions, versionName, rcIncoming);
+      localStorage.setItem(storageKey, JSON.stringify(newVersions));
+      if (isCurrentHotel) {
+        if (uploadType === "exec") { setExecRcVersions(newVersions); setExecRcSelectedIdx(null); }
+        else { setContractRcVersions(newVersions); setContractRcSelectedIdx(null); }
+      }
+      saved.push("別紙1-1");
+    }
+
+    if (mrIncoming) {
+      const storageKey = `current-${uploadType}-mr-versions-${facilityNo}`;
+      let currVersions: VersionedEntry<MeetingRoomsDB[string]>[] = [];
+      if (isCurrentHotel) {
+        currVersions = uploadType === "exec" ? execMrVersions : contractMrVersions;
+      } else {
+        try { const raw = localStorage.getItem(storageKey); if (raw) currVersions = JSON.parse(raw); } catch { /* ignore */ }
+      }
+      const newVersions = addOrUpdateVersion(currVersions, versionName, mrIncoming);
+      localStorage.setItem(storageKey, JSON.stringify(newVersions));
+      if (isCurrentHotel) {
+        if (uploadType === "exec") { setExecMrVersions(newVersions); setExecMrSelectedIdx(null); }
+        else { setContractMrVersions(newVersions); setContractMrSelectedIdx(null); }
+      }
+      saved.push("別紙1-2");
+    }
+
+    setMatchPending(null);
+    setHotelUploadMsg(`✓ ${targetHotel.name}（${facilityNo}）に保存 — ${saved.join("・")} / バージョン: ${versionName}`);
   };
 
   const handleSheetConfirm = async () => {
@@ -2239,6 +2290,61 @@ function HotelDetailInner() {
           }}
           onClose={() => setHotelEditOpen(false)}
         />
+      )}
+
+      {/* 施設自動マッチングダイアログ */}
+      {matchPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMatchPending(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="px-6 pt-5 pb-4 border-b border-gray-100">
+              <h3 className="text-base font-bold text-gray-900">保存先の施設を確認してください</h3>
+              <p className="text-xs text-gray-400 mt-0.5">バージョン: {matchPending.versionName} / {matchPending.uploadType === "exec" ? "予算執行額" : "契約額"}</p>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              {matchPending.detectedName && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                  <div className="text-xs text-blue-500 mb-0.5">Excelファイル内の施設名</div>
+                  <div className="text-sm font-semibold text-blue-800">{matchPending.detectedName}</div>
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">保存先ホテル</label>
+                <select
+                  value={matchSelectedHotelId}
+                  onChange={e => setMatchSelectedHotelId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+                >
+                  {hotels.filter(h => h.facilityNo).sort((a, b) => (a.facilityNo ?? "").localeCompare(b.facilityNo ?? "")).map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.facilityNo} — {h.name}
+                      {h.id === matchPending.suggestedHotelId ? " ★" : ""}
+                    </option>
+                  ))}
+                </select>
+                {matchPending.suggestedHotelId && matchPending.suggestedHotelId !== matchSelectedHotelId && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    ★ 自動マッチング候補: {hotels.find(h => h.id === matchPending.suggestedHotelId)?.name}
+                  </p>
+                )}
+              </div>
+              <div className="text-xs text-gray-400">
+                {matchPending.rcIncoming && <span className="mr-2">別紙1-1（客室確保費）</span>}
+                {matchPending.mrIncoming && <span>別紙1-2（会議室等確保費）</span>}
+                を保存します
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setMatchPending(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">キャンセル</button>
+              <button
+                onClick={handleMatchConfirm}
+                disabled={!matchSelectedHotelId}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-40"
+              >
+                この施設に保存
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* シート選択ダイアログ */}
