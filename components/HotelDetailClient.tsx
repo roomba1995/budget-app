@@ -1477,7 +1477,7 @@ function HotelDetailInner() {
     asia_technical_official: "アジア技術役員", para_technical_official: "パラ技術役員",
     asia: "アジア", para: "パラ",
   };
-  const execRcComputed: { total: number | null; warnings: string[] } = (() => {
+  const execRcComputed: { total: number | null; warnings: string[]; bestVersionNames: Set<string> } = (() => {
     if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>() };
 
     // セクションキーごとに最大金額バージョンを選択
