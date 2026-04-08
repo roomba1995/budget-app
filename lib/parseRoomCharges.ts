@@ -1,6 +1,11 @@
 /**
  * Browser-side parser for 別紙1-1 sheets in the accommodation cost Excel file.
  * Uses SheetJS (xlsx) loaded dynamically to avoid inflating the initial bundle.
+ *
+ * Supports three per-hotel Excel formats:
+ *   Format A – standard athlete (客室タイプ at col 8, 提供客室 at col 10)
+ *   Format B – 技術役員 (役職 col present; 客室タイプ at col 5, 提供客室 at col 7)
+ *   Format C – simplified athlete with 日別 rows (客室タイプ at col 5, 提供客室 at col 7)
  */
 
 export interface RoomRow {
@@ -45,10 +50,23 @@ export interface RoomChargeSection {
   totalCostTax: number | null;
 }
 
+/** Four-way section key for per-hotel 予算執行 files */
+export type RoomSectionKey =
+  | "asia_athlete"
+  | "para_athlete"
+  | "asia_technical_official"
+  | "para_technical_official";
+
 export interface RoomChargeEntry {
   hotelName: string;
-  asia: RoomChargeSection | null;
-  para: RoomChargeSection | null;
+  // Legacy fields kept for backward-compat with multi-sheet upload
+  asia?: RoomChargeSection | null;
+  para?: RoomChargeSection | null;
+  // Per-hotel 予算執行 sections (4-way)
+  asia_athlete?: RoomChargeSection | null;
+  para_athlete?: RoomChargeSection | null;
+  asia_technical_official?: RoomChargeSection | null;
+  para_technical_official?: RoomChargeSection | null;
 }
 
 export type RoomChargesDB = Record<string, RoomChargeEntry>;
@@ -78,6 +96,7 @@ function formatDate(v: unknown): string | null {
     const d = String(v.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   }
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
   return null;
 }
 
@@ -104,7 +123,205 @@ function findSectionStarts(rows: unknown[][]): { asiaStart: number; paraStart: n
   return { asiaStart, paraStart };
 }
 
-// ── Section parser ────────────────────────────────────────────────────────────
+// ── Format detection ─────────────────────────────────────────────────────────
+
+type ExcelFormat = "A" | "B" | "C";
+
+/**
+ * Detect the per-hotel format from the header rows near startRow.
+ *   B → 役職 present in header
+ *   C → 日別 present in header
+ *   A → default
+ */
+function detectFormat(rows: unknown[][], startRow: number): ExcelFormat {
+  for (let i = startRow; i < Math.min(startRow + 8, rows.length); i++) {
+    const rt = (rows[i] ?? []).map((c) => cellStr(c)).join("");
+    if (rt.includes("役職")) return "B";
+    if (rt.includes("日別")) return "C";
+  }
+  return "A";
+}
+
+// ── Per-hotel section parser (multi-format) ───────────────────────────────────
+
+function parseSectionByFormat(
+  rows: unknown[][],
+  startRow: number,
+  endRow: number,
+  format: ExcelFormat
+): RoomChargeSection | null {
+  const rooms: RoomRow[] = [];
+  let sumTotalRooms = 0;
+  let sumOfferedRooms = 0;
+  let sumRoomNights = 0;
+  let totalCost: number | null = null;
+  let totalCostTax: number | null = null;
+
+  for (let i = startRow; i < Math.min(endRow, rows.length); i++) {
+    const row = rows[i] ?? [];
+    const colA = row[0];
+    const rowText = (row as unknown[]).map((c) => cellStr(c)).join("");
+
+    if (rowText.includes("記入例")) continue;
+
+    // ── データ行 ─────────────────────────────────────────────────────────────
+    if (typeof colA === "number" && Number.isInteger(colA) && colA > 0 && colA <= 200) {
+      let roomRow: RoomRow | null = null;
+
+      if (format === "A") {
+        // Col layout: 0=No, 1=CI, 2=本番開始, 3=準備泊, 4=本番終了, 5=本番泊,
+        //             6=CO, 7=撤去泊, 8=客室タイプ, 9=総客室数, 10=提供客室,
+        //             11=準備単価, 12=本番単価, 13=撤去単価, 14=RN, 15=宿泊料金,
+        //             16=広さmin, 17=～, 18=広さmax, 19=利用人数
+        const roomType = cellStr(row[8]);
+        if (!roomType) continue;
+        const offered = toNum(row[10]) ?? 0;
+        const prepareDays = toNum(row[3]);
+        const mainDays = toNum(row[5]);
+        const removeDays = toNum(row[7]);
+        const preparePrice = toNum(row[11]);
+        const mainPrice = toNum(row[12]);
+        const removePrice = toNum(row[13]);
+        const roomNights = toNum(row[14]) ?? 0;
+        const lodgingFee = toNum(row[15]);
+        roomRow = {
+          no: colA, roomType,
+          totalRooms: toNum(row[9]) ?? 0,
+          offeredRooms: offered,
+          checkin: formatDate(row[1]),
+          mainStart: formatDate(row[2]),
+          prepareDays,
+          mainEnd: formatDate(row[4]),
+          mainDays,
+          checkout: formatDate(row[6]),
+          removeDays,
+          preparePrice, mainPrice,
+          dailyAmount: mainPrice != null && offered > 0 ? mainPrice * offered : 0,
+          removePrice, roomNights, lodgingFee,
+          areaSqmMin: toNum(row[16]), areaSqmMax: toNum(row[18]),
+          occupancy: toNum(row[19]),
+          bedSizeW: null, bedSizeH: null, bedCount: null,
+          bath: null, lanWired: null, lanWireless: null, sonota: null,
+          dailyOccupancyRef: null,
+        };
+      } else if (format === "B") {
+        // Col layout: 0=No, 1=役職, 2=CI, 3=CO, 4=泊数, 5=客室タイプ,
+        //             6=総客室数, 7=提供客室, 8=単価/室, 9=RN, 10=宿泊料金,
+        //             11=広さmin, 12=～, 13=広さmax, 14=利用人数,
+        //             15=ベッドサイズ1, 17=ベッドサイズ2, 18=ベッド数, 19=浴室
+        const roomType = cellStr(row[5]);
+        if (!roomType) continue;
+        const offered = toNum(row[7]) ?? 0;
+        const mainDays = toNum(row[4]);
+        const mainPrice = toNum(row[8]);
+        const roomNights = toNum(row[9]) ?? 0;
+        const lodgingFee = toNum(row[10]);
+        roomRow = {
+          no: colA, roomType,
+          totalRooms: toNum(row[6]) ?? 0,
+          offeredRooms: offered,
+          checkin: formatDate(row[2]),
+          mainStart: null, prepareDays: null,
+          mainEnd: null, mainDays,
+          checkout: formatDate(row[3]),
+          removeDays: null,
+          preparePrice: null, mainPrice,
+          dailyAmount: mainPrice != null && offered > 0 ? mainPrice * offered : 0,
+          removePrice: null, roomNights, lodgingFee,
+          areaSqmMin: toNum(row[11]), areaSqmMax: toNum(row[13]),
+          occupancy: toNum(row[14]),
+          bedSizeW: toNum(row[15]), bedSizeH: toNum(row[17]),
+          bedCount: toNum(row[18]),
+          bath: cellStr(row[19]) || null,
+          lanWired: null, lanWireless: null, sonota: null,
+          dailyOccupancyRef: null,
+        };
+      } else {
+        // Format C: 0=No, 1=CI, 2=CO, 3=日別(平日/休前日), 4=泊数, 5=客室タイプ,
+        //           6=総客室数, 7=提供客室, 8=単価/室, 9=RN, 10=宿泊料金,
+        //           11=利用人数
+        const roomType = cellStr(row[5]);
+        if (!roomType) continue;
+        const offered = toNum(row[7]) ?? 0;
+        const mainDays = toNum(row[4]);
+        const mainPrice = toNum(row[8]);
+        const roomNights = toNum(row[9]) ?? 0;
+        const lodgingFee = toNum(row[10]);
+        const dailyType = cellStr(row[3]);
+        roomRow = {
+          no: colA,
+          roomType: roomType + (dailyType ? `（${dailyType}）` : ""),
+          totalRooms: toNum(row[6]) ?? 0,
+          offeredRooms: offered,
+          checkin: formatDate(row[1]),
+          mainStart: null, prepareDays: null,
+          mainEnd: null, mainDays,
+          checkout: formatDate(row[2]),
+          removeDays: null,
+          preparePrice: null, mainPrice,
+          dailyAmount: mainPrice != null && offered > 0 ? mainPrice * offered : 0,
+          removePrice: null, roomNights, lodgingFee,
+          areaSqmMin: null, areaSqmMax: null,
+          occupancy: toNum(row[11]),
+          bedSizeW: null, bedSizeH: null, bedCount: null,
+          bath: null, lanWired: null, lanWireless: null, sonota: null,
+          dailyOccupancyRef: null,
+        };
+      }
+
+      if (roomRow) rooms.push(roomRow);
+      continue;
+    }
+
+    // ── 合計行 ──────────────────────────────────────────────────────────────
+    if (rowText.includes("合計") && !rowText.includes("総") && !rowText.includes("料金")) {
+      if (format === "A") {
+        sumTotalRooms = toNum(row[9]) ?? sumTotalRooms;
+        sumOfferedRooms = toNum(row[10]) ?? sumOfferedRooms;
+        sumRoomNights = toNum(row[14]) ?? sumRoomNights;
+      } else {
+        sumTotalRooms = toNum(row[6]) ?? sumTotalRooms;
+        sumOfferedRooms = toNum(row[7]) ?? sumOfferedRooms;
+        sumRoomNights = toNum(row[9]) ?? sumRoomNights;
+      }
+      continue;
+    }
+
+    // ── 総宿泊料金 ──────────────────────────────────────────────────────────
+    if (rowText.includes("総宿泊料金") || rowText.includes("宿泊料金合計") || rowText.includes("客室確保費合計")) {
+      const isTax =
+        rowText.includes("税込") ||
+        rowText.includes("税サ込") ||
+        rowText.includes("サ込税") ||
+        rowText.includes("税S込");
+      let val: number | null = null;
+      for (let c = 1; c < row.length; c++) {
+        const n = toNum(row[c]);
+        if (n != null && n > 0) { val = n; break; }
+      }
+      if (val != null) {
+        if (isTax) totalCostTax = val;
+        else totalCost = val;
+      }
+      continue;
+    }
+  }
+
+  if (rooms.length === 0) return null;
+
+  return {
+    rooms,
+    totalRooms: sumTotalRooms || rooms.reduce((s, r) => s + r.totalRooms, 0),
+    offeredRooms: sumOfferedRooms || rooms.reduce((s, r) => s + r.offeredRooms, 0),
+    roomNights: sumRoomNights || rooms.reduce((s, r) => s + r.roomNights, 0),
+    dailyCost: null,
+    dailyCostTax: null,
+    totalCost,
+    totalCostTax,
+  };
+}
+
+// ── Legacy multi-sheet section parser (preserved for 宿泊費積算根拠.xlsx upload) ──
 
 function parseSection(
   rows: unknown[][],
@@ -124,11 +341,11 @@ function parseSection(
   for (let i = startRow; i < Math.min(endRow, rows.length); i++) {
     const row = rows[i] ?? [];
 
-    // Column indices (0-based):
-    // A=0:No, B=1:チェックイン日, C=2:本番期間開始日, D=3:準備泊数, E=4:本番期間終了日, F=5:本番泊数,
-    // G=6:チェックアウト日, H=7:撤去泊数, I=8:客室タイプ, J=9:総客室数, K=10:提供客室,
-    // L=11:準備期間客室単価/室, M=12:本番期間客室単価/室, N=13:内部データ(skip),
-    // O=14:撤去期間客室単価/室, P=15:ルームナイツ, Q=16:宿泊料金
+    // Column indices for the large 宿泊費積算根拠.xlsx file:
+    // A=0:No, B=1:CI, C=2:本番開始, D=3:準備泊, E=4:本番終了, F=5:本番泊,
+    // G=6:CO, H=7:撤去泊, I=8:客室タイプ, J=9:総客室数, K=10:提供客室,
+    // L=11:準備単価, M=12:本番単価, N=13:内部(skip), O=14:撤去単価,
+    // P=15:RN, Q=16:宿泊料金
     const colA = row[0];
     const colJ = row[9];
     const colK = row[10];
@@ -140,7 +357,6 @@ function parseSection(
     const strI = cellStr(row[8]);
     const rowText = (row as unknown[]).map((c) => cellStr(c)).join("");
 
-    // ── Data rows: A = integer No., I = room type text ───────────────────────
     if (
       typeof colA === "number" &&
       Number.isInteger(colA) &&
@@ -156,7 +372,6 @@ function parseSection(
       const removeDays = toNum(row[7]);
       const preparePrice = toNum(row[11]);
       const removePrice = toNum(row[14]);
-      // Q列(16)=宿泊料金: Excel実値を優先、なければ計算で補完
       const lodgingFeeRaw = toNum(colQ);
       const lodgingFeeCalc =
         (preparePrice != null && prepareDays != null ? preparePrice * prepareDays * offered : 0) +
@@ -196,8 +411,6 @@ function parseSection(
       continue;
     }
 
-    // ── 合計 row (room-count summary — must be exact "合計" to avoid matching
-    //    label rows like "客室確保費合計" that should fall through to cost parsing) ──
     if (strA === "合計" || strI === "合計") {
       sumTotalRooms = toNum(colJ) ?? sumTotalRooms;
       sumOfferedRooms = toNum(colK) ?? sumOfferedRooms;
@@ -205,10 +418,6 @@ function parseSection(
       continue;
     }
 
-    // ── 1日あたり / 税込 rows ─────────────────────────────────────────────────
-    // Scan entire row because label column shifts between hotels.
-    // "1日あたり" label → first positive numeric value to its right is dailyCost.
-    // "税込"  label appearing after foundDailyCost → same logic for dailyCostTax.
     {
       let matchedDailyRow = false;
       let matchedTaxRow = false;
@@ -230,8 +439,6 @@ function parseSection(
       if (matchedDailyRow || matchedTaxRow) continue;
     }
 
-    // ── 総宿泊料金 rows ───────────────────────────────────────────────────────
-    // Scan entire row for the value — column position varies between hotels.
     if (rowText.includes("総宿泊料金") || rowText.includes("宿泊料金合計") || rowText.includes("客室確保費合計")) {
       let val: number | null = null;
       for (let c = 1; c < row.length; c++) {
@@ -242,7 +449,6 @@ function parseSection(
         rowText.includes("税込") ||
         rowText.includes("税サ込") ||
         rowText.includes("サ込税");
-      // Only overwrite if we found an actual value — empty/duplicate rows must not clear prior values
       if (val != null) {
         if (isTax) { totalCostTax = val; }
         else { totalCost = val; }
@@ -254,14 +460,12 @@ function parseSection(
   if (rooms.length === 0 && dailyCost === null) return null;
 
   const computedDailyCost = rooms.reduce((s, r) => s + r.dailyAmount, 0);
-  // Fallback: compute pre-tax total from room lodging fees when the 総宿泊料金 row was not found
   const computedTotalCost = rooms.reduce((s, r) => s + (r.lodgingFee ?? 0), 0);
 
   return {
     rooms,
     totalRooms: sumTotalRooms || rooms.reduce((s, r) => s + r.totalRooms, 0),
-    offeredRooms:
-      sumOfferedRooms || rooms.reduce((s, r) => s + r.offeredRooms, 0),
+    offeredRooms: sumOfferedRooms || rooms.reduce((s, r) => s + r.offeredRooms, 0),
     roomNights: sumRoomNights || rooms.reduce((s, r) => s + r.roomNights, 0),
     dailyCost: dailyCost ?? (computedDailyCost > 0 ? computedDailyCost : null),
     dailyCostTax,
@@ -273,8 +477,8 @@ function parseSection(
 // ── Per-hotel parse helper ────────────────────────────────────────────────────
 
 /**
- * Parse a per-hotel file that contains a single 別紙1-1 sheet.
- * Returns the facilityNo and entry, or an error string.
+ * Parse a per-hotel 予算執行 file (別紙1-1 sheet).
+ * Detects format (A/B/C) and assigns sections to 4-way keys.
  */
 export async function parseRoomChargesFromPerHotelFile(
   file: File,
@@ -284,7 +488,9 @@ export async function parseRoomChargesFromPerHotelFile(
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
 
-  const sheetName = overrideSheetName ?? workbook.SheetNames.find((n) => n.includes("別紙1-1"));
+  const sheetName =
+    overrideSheetName ??
+    workbook.SheetNames.find((n) => n.includes("別紙1-1"));
   if (!sheetName) return { error: "別紙1-1シートが見つかりません" };
 
   const match = sheetName.match(/^0*(\d+)[_　\s]/);
@@ -298,56 +504,73 @@ export async function parseRoomChargesFromPerHotelFile(
     defval: null,
   }) as unknown[][];
 
+  // Hotel name: try col 2 then col 3 in row 2 (index 1)
   const row1 = rows[1] ?? [];
-  const hotelName = cellStr(row1[2]) || cellStr(row1[0]) || "";
+  const hotelName =
+    cellStr(row1[2]) || cellStr(row1[3]) || cellStr(row1[0]) || "";
 
   const { asiaStart, paraStart } = findSectionStarts(rows);
   if (asiaStart < 0 && paraStart < 0) return { error: "セクションが見つかりません" };
 
+  // Detect format from the first section's header rows
+  const firstSectionStart = asiaStart >= 0 ? asiaStart : paraStart;
+  const format = detectFormat(rows, firstSectionStart);
+  const participantType = format === "B" ? "technical_official" : "athlete";
+
   const asiaEnd = paraStart >= 0 ? paraStart : rows.length;
-  const asia = asiaStart >= 0 ? parseSection(rows, asiaStart + 1, asiaEnd) : null;
-  const para = paraStart >= 0 ? parseSection(rows, paraStart + 1, rows.length) : null;
+  const asiaSection =
+    asiaStart >= 0 ? parseSectionByFormat(rows, asiaStart + 1, asiaEnd, format) : null;
+  const paraSection =
+    paraStart >= 0 ? parseSectionByFormat(rows, paraStart + 1, rows.length, format) : null;
 
-  if (!asia && !para) return { error: "データが見つかりません" };
+  if (!asiaSection && !paraSection) return { error: "データが見つかりません" };
 
-  return { facilityNo, entry: { hotelName, asia, para } };
+  const entry: RoomChargeEntry = { hotelName };
+  if (asiaSection) {
+    if (participantType === "athlete") entry.asia_athlete = asiaSection;
+    else entry.asia_technical_official = asiaSection;
+  }
+  if (paraSection) {
+    if (participantType === "athlete") entry.para_athlete = paraSection;
+    else entry.para_technical_official = paraSection;
+  }
+
+  return { facilityNo, entry };
 }
 
-// ── Extract hotel name from Excel (C2 cell) ──────────────────────────────────
+// ── Extract hotel name from Excel (C2/D2 cell) ───────────────────────────────
 
 /**
- * Extract the hotel name from C2 (or nearby) cell of a per-hotel 別紙1-1 Excel file.
+ * Extract the hotel name from C2 or D2 cell of a per-hotel 別紙1-1 Excel file.
  */
 export async function extractHotelNameFromExcel(file: File): Promise<string | null> {
   const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
-  // シートを探す（別紙1-1が最優先）
-  const sheetName = wb.SheetNames.find(n => n.includes("別紙1-1") || n.includes("別紙1-2")) ?? wb.SheetNames[0];
+  const sheetName =
+    wb.SheetNames.find((n) => n.includes("別紙1-1") || n.includes("別紙1-2")) ??
+    wb.SheetNames[0];
   if (!sheetName) return null;
   const ws = wb.Sheets[sheetName];
-  // C2セル
-  const c2 = ws["C2"]?.v ?? ws["B2"]?.v ?? ws["C3"]?.v ?? null;
-  return c2 ? String(c2).trim() : null;
+  // Try C2, D2, B2, C3 in order
+  const name =
+    ws["C2"]?.v ?? ws["D2"]?.v ?? ws["B2"]?.v ?? ws["C3"]?.v ?? null;
+  return name ? String(name).trim() : null;
 }
 
 // ── Sheet info helper ────────────────────────────────────────────────────────
 
-/**
- * Return all 別紙1-1 and 別紙1-2 sheet names in the given Excel file.
- * Used for multi-sheet selection UI.
- */
 export async function getExcelSheetInfo(file: File): Promise<{ rcSheets: string[]; mrSheets: string[] }> {
   const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
   return {
-    rcSheets: wb.SheetNames.filter(n => n.includes("別紙1-1")),
-    mrSheets: wb.SheetNames.filter(n => n.includes("別紙1-2")),
+    rcSheets: wb.SheetNames.filter((n) => n.includes("別紙1-1")),
+    mrSheets: wb.SheetNames.filter((n) => n.includes("別紙1-2")),
   };
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+// ── Public API (multi-sheet 宿泊費積算根拠.xlsx upload) ───────────────────────
 
 export async function parseRoomChargesFromFile(
   file: File
@@ -355,7 +578,6 @@ export async function parseRoomChargesFromFile(
   const XLSX = await import("xlsx");
 
   const buffer = await file.arrayBuffer();
-  // cellDates:true converts Excel date serials to JS Date objects
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
 
   const db: RoomChargesDB = {};
@@ -364,7 +586,6 @@ export async function parseRoomChargesFromFile(
   for (const sheetName of workbook.SheetNames) {
     if (!sheetName.includes("別紙1-1")) continue;
 
-    // Sheet name format: "NNNN_ホテル名　別紙1-1" — extract the facility number
     const match = sheetName.match(/^0*(\d+)[_　\s]/);
     if (!match) {
       errors.push(`"${sheetName}": 施設番号を抽出できません`);
@@ -380,7 +601,6 @@ export async function parseRoomChargesFromFile(
         defval: null,
       }) as unknown[][];
 
-      // Hotel name is in row 2 (index 1), column C (A is the label "施設様名")
       const row1 = rows[1] ?? [];
       const hotelName = cellStr(row1[2]) || cellStr(row1[0]) || "";
 
@@ -395,9 +615,7 @@ export async function parseRoomChargesFromFile(
       const asia =
         asiaStart >= 0 ? parseSection(rows, asiaStart + 1, asiaEnd) : null;
       const para =
-        paraStart >= 0
-          ? parseSection(rows, paraStart + 1, rows.length)
-          : null;
+        paraStart >= 0 ? parseSection(rows, paraStart + 1, rows.length) : null;
 
       if (!asia && !para) {
         errors.push(`"${sheetName}": データが見つかりません`);
