@@ -300,16 +300,27 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
   );
 }
 
+const RC_SECTION_CONFIG: { key: keyof RoomChargesDB[string]; label: string }[] = [
+  { key: "asia_athlete",            label: "◆ アジア競技大会（選手）" },
+  { key: "asia_technical_official", label: "◆ アジア競技大会（技術役員）" },
+  { key: "para_athlete",            label: "◆ アジアパラ競技大会（選手）" },
+  { key: "para_technical_official", label: "◆ アジアパラ競技大会（技術役員）" },
+  { key: "asia",                    label: "◆ アジア競技大会" },
+  { key: "para",                    label: "◆ アジアパラ競技大会" },
+];
+
 function RoomChargeInTab({ chargeData }: { chargeData: RoomChargesDB[string] | null }) {
   if (!chargeData) return null;
-  const hasAsia = chargeData.asia != null && hasMeaningfulData(chargeData.asia);
-  const hasPara = chargeData.para != null && hasMeaningfulData(chargeData.para);
-  if (!hasAsia && !hasPara) return null;
+  const sections = RC_SECTION_CONFIG.filter(
+    ({ key }) => chargeData[key] != null && hasMeaningfulData(chargeData[key] as RoomChargeSection)
+  );
+  if (sections.length === 0) return null;
   return (
     <div className="mb-5 pb-5 border-b border-gray-100">
       <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-1より）</p>
-      {hasAsia && <RoomChargeSectionTable label="◆ アジア競技大会" section={chargeData.asia!} />}
-      {hasPara && <RoomChargeSectionTable label="◆ アジアパラ競技大会" section={chargeData.para!} />}
+      {sections.map(({ key, label }) => (
+        <RoomChargeSectionTable key={key} label={label} section={chargeData[key] as RoomChargeSection} />
+      ))}
     </div>
   );
 }
@@ -957,8 +968,12 @@ function CurrentModeDiffView({ execEntry, contractEntry }: { execEntry: RoomChar
   const fmt = (n: number) => n.toLocaleString("ja-JP", {style:"currency",currency:"JPY",maximumFractionDigits:0});
 
   const sections: {label:string; exec: RoomChargeSection|null; contract: RoomChargeSection|null}[] = [
-    { label: "アジア競技大会", exec: execEntry?.asia??null, contract: contractEntry?.asia??null },
-    { label: "パラ競技大会", exec: execEntry?.para??null, contract: contractEntry?.para??null },
+    { label: "アジア競技大会（選手）",        exec: execEntry?.asia_athlete??null,            contract: contractEntry?.asia_athlete??null },
+    { label: "アジア競技大会（技術役員）",    exec: execEntry?.asia_technical_official??null, contract: contractEntry?.asia_technical_official??null },
+    { label: "アジアパラ競技大会（選手）",    exec: execEntry?.para_athlete??null,            contract: contractEntry?.para_athlete??null },
+    { label: "アジアパラ競技大会（技術役員）",exec: execEntry?.para_technical_official??null, contract: contractEntry?.para_technical_official??null },
+    { label: "アジア競技大会",                exec: execEntry?.asia??null,                    contract: contractEntry?.asia??null },
+    { label: "アジアパラ競技大会",            exec: execEntry?.para??null,                    contract: contractEntry?.para??null },
   ];
 
   return (
