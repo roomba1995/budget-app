@@ -1478,7 +1478,7 @@ function HotelDetailInner() {
     asia: "アジア", para: "パラ",
   };
   const execRcComputed: { total: number | null; warnings: string[] } = (() => {
-    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [], bestVersionNames: new Set<string>() };
+    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>() };
 
     // セクションキーごとに最大金額バージョンを選択
     const bestByKey = new Map<string, { section: any; versionName: string; total: number }>();
@@ -1493,7 +1493,7 @@ function HotelDetailInner() {
         }
       }
     }
-    if (bestByKey.size === 0) return { total: null, warnings: [], bestVersionNames: new Set<string>() };
+    if (bestByKey.size === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>() };
 
     // 日付範囲を取得（min checkin 〜 max checkout）
     const getRange = (sec: any) => {
