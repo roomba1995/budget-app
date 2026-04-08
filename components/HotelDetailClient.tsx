@@ -1466,27 +1466,70 @@ function HotelDetailInner() {
 
   const variance = calcVariance(adjustedTotals.budget, adjustedTotals.actual);
 
-  // 現状金額モード: 予算執行額の全バージョンの中でアジア+パラ合計が最大のものを執行済額（客室確保費）として使用
+  // 現状金額モード: 予算執行額から執行済額を算出
+  // ロジック:
+  //   1. セクションキーごとに最大金額バージョンを選ぶ
+  //   2. 選ばれたセクション間の日付範囲（checkin〜checkout）を比較
+  //   3. 完全に独立 → 合算、一部重複 → 警告表示
   const RC_ALL_SECTION_KEYS = ["asia_athlete", "para_athlete", "asia_technical_official", "para_technical_official", "asia", "para"] as const;
-  const execRcMaxTotal: number | null = (() => {
-    if (mode !== "current" || execRcVersions.length === 0) return null;
-    let max: number | null = null;
+  const EXEC_SECTION_LABELS: Record<string, string> = {
+    asia_athlete: "アジア選手", para_athlete: "パラ選手",
+    asia_technical_official: "アジア技術役員", para_technical_official: "パラ技術役員",
+    asia: "アジア", para: "パラ",
+  };
+  const execRcComputed: { total: number | null; warnings: string[] } = (() => {
+    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] };
+
+    // セクションキーごとに最大金額バージョンを選択
+    const bestByKey = new Map<string, { section: any; versionName: string; total: number }>();
     for (const v of execRcVersions) {
-      const entry = v.data as Record<string, any>;
-      let sum = 0;
       for (const k of RC_ALL_SECTION_KEYS) {
-        const sec = entry[k];
+        const sec = (v.data as any)[k];
         if (!sec) continue;
-        const val = sec.totalCostTax ?? sec.totalCost ?? null;
-        if (val != null) sum += val;
+        const total = (sec.totalCostTax ?? sec.totalCost ?? 0) as number;
+        const existing = bestByKey.get(k);
+        if (!existing || total > existing.total) {
+          bestByKey.set(k, { section: sec, versionName: v.versionName, total });
+        }
       }
-      if (sum > 0 && (max === null || sum > max)) max = sum;
     }
-    return max;
+    if (bestByKey.size === 0) return { total: null, warnings: [] };
+
+    // 日付範囲を取得（min checkin 〜 max checkout）
+    const getRange = (sec: any) => {
+      const rooms: any[] = sec.rooms ?? [];
+      const checkins = rooms.map((r: any) => r.checkin).filter(Boolean).sort();
+      const checkouts = rooms.map((r: any) => r.checkout).filter(Boolean).sort();
+      return { min: checkins[0] ?? null, max: checkouts[checkouts.length - 1] ?? null };
+    };
+
+    const entries = Array.from(bestByKey.entries()).map(([key, { section, versionName, total }]) => ({
+      key, versionName, total, range: getRange(section),
+    }));
+
+    // ペアごとに日付重複チェック
+    const warnings: string[] = [];
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const a = entries[i], b = entries[j];
+        if (!a.range.min || !a.range.max || !b.range.min || !b.range.max) continue;
+        // 重複判定: A.min <= B.max && B.min <= A.max
+        if (a.range.min <= b.range.max && b.range.min <= a.range.max) {
+          warnings.push(
+            `${EXEC_SECTION_LABELS[a.key] ?? a.key}（${a.versionName}: ${a.range.min}〜${a.range.max}）と` +
+            `${EXEC_SECTION_LABELS[b.key] ?? b.key}（${b.versionName}: ${b.range.min}〜${b.range.max}）` +
+            `の利用期間が重複しています。執行済額の計上方法を確認してください。`
+          );
+        }
+      }
+    }
+
+    const total = entries.reduce((s, e) => s + e.total, 0);
+    return { total, warnings };
   })();
 
-  const executedTotal = mode === "current" && execRcMaxTotal != null
-    ? execRcMaxTotal
+  const executedTotal = mode === "current" && execRcComputed.total != null
+    ? execRcComputed.total
     : hotel.costItems.reduce((s, i) => s + (i.executedAmount || 0), 0);
   const executionPct =
     adjustedTotals.actual > 0
@@ -1961,6 +2004,19 @@ function HotelDetailInner() {
             </div>
           </div>
         </div>
+
+        {/* 利用期間重複警告 */}
+        {mode === "current" && execRcComputed.warnings.length > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 space-y-1.5">
+            <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm">
+              <span>⚠</span>
+              <span>利用期間の重複を検出 — 執行済額の計上方法を確認してください</span>
+            </div>
+            {execRcComputed.warnings.map((w, i) => (
+              <p key={i} className="text-xs text-amber-700 pl-5">{w}</p>
+            ))}
+          </div>
+        )}
 
         {/* ── Accordion: 施設情報 ＋ ファンクションルーム ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
