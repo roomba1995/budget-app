@@ -172,11 +172,13 @@ type MealCostsDB = Record<string, MealCostEntry>;
 // ─────────────────────────────────────────────
 
 function RoomChargeSectionTable({ label, section }: { label: string; section: RoomChargeSection }) {
+  const [expanded, setExpanded] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!expanded) return;
     const top = topRef.current;
     const bottom = bottomRef.current;
     if (!top || !bottom) return;
@@ -190,12 +192,32 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
     top.addEventListener("scroll", onTop);
     bottom.addEventListener("scroll", onBottom);
     return () => { top.removeEventListener("scroll", onTop); bottom.removeEventListener("scroll", onBottom); };
-  }, [section]);
+  }, [section, expanded]);
 
   if (!hasMeaningfulData(section)) return null;
+
+  const fmt = (n: number | null | undefined) => n != null ? n.toLocaleString("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }) : "—";
+
   return (
     <div className="mb-4">
-      <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
+      {/* ヘッダー（常時表示） */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="w-full flex items-center justify-between text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-2 mb-2 hover:bg-blue-100 transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <span className="text-blue-400 transition-transform duration-200" style={{ display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+          {label}
+        </span>
+        <span className="flex gap-4 tabular-nums font-normal text-blue-600">
+          <span>総客室: {fmtInt(section.totalRooms)} / 提供: {fmtInt(section.offeredRooms)}</span>
+          <span>RN: {fmtInt(section.roomNights)}</span>
+          <span className="font-bold">{fmt(section.totalCostTax ?? section.totalCost)}</span>
+        </span>
+      </button>
+
+      {expanded && (
+        <>
       {/* Top scrollbar mirror */}
       <div ref={topRef} className="overflow-x-scroll" style={{ height: 16, overflowY: "hidden" }}>
         <div ref={spacerRef} style={{ height: 1 }} />
@@ -295,7 +317,8 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
           <div className="font-bold text-emerald-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
         </div>
       </div>
-
+        </>
+      )}
     </div>
   );
 }
