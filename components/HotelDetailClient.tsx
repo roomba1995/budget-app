@@ -1525,8 +1525,18 @@ function HotelDetailInner() {
     }
 
     const total = entries.reduce((s, e) => s + e.total, 0);
-    // 各セクションで採用されたバージョン名のセット（ドロップダウン表示用）
-    const bestVersionNames = new Set(entries.map(e => e.versionName));
+
+    // 「最新」= セクションキーごとに最後に含まれているバージョン（配列末尾基準）
+    const latestByKey = new Map<string, string>();
+    for (const k of RC_ALL_SECTION_KEYS) {
+      for (let i = execRcVersions.length - 1; i >= 0; i--) {
+        if ((execRcVersions[i].data as any)[k]) {
+          latestByKey.set(k, execRcVersions[i].versionName);
+          break;
+        }
+      }
+    }
+    const bestVersionNames = new Set(Array.from(latestByKey.values()));
     return { total, warnings, bestVersionNames };
   })();
 
