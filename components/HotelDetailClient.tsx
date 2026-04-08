@@ -88,7 +88,15 @@ function fmtDate(v: string | null | undefined): string {
 }
 
 const ROOM_CHARGES_STORAGE_KEY = "room-charges-v2-uploaded";
-type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection | null; para: RoomChargeSection | null }>;
+type RoomChargesDB = Record<string, {
+  hotelName: string;
+  asia?: RoomChargeSection | null;
+  para?: RoomChargeSection | null;
+  asia_athlete?: RoomChargeSection | null;
+  para_athlete?: RoomChargeSection | null;
+  asia_technical_official?: RoomChargeSection | null;
+  para_technical_official?: RoomChargeSection | null;
+}>;
 
 // ─────────────────────────────────────────────
 // Meeting room types (別紙1-2)
