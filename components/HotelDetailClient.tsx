@@ -88,17 +88,7 @@ function fmtDate(v: string | null | undefined): string {
 }
 
 const ROOM_CHARGES_STORAGE_KEY = "room-charges-v2-uploaded";
-type RoomChargesDB = Record<string, {
-  hotelName: string;
-  // Legacy (multi-sheet upload)
-  asia?: RoomChargeSection | null;
-  para?: RoomChargeSection | null;
-  // Per-hotel 予算執行 (4-way sections)
-  asia_athlete?: RoomChargeSection | null;
-  para_athlete?: RoomChargeSection | null;
-  asia_technical_official?: RoomChargeSection | null;
-  para_technical_official?: RoomChargeSection | null;
-}>;
+type RoomChargesDB = Record<string, { hotelName: string; asia: RoomChargeSection | null; para: RoomChargeSection | null }>;
 
 // ─────────────────────────────────────────────
 // Meeting room types (別紙1-2)
@@ -302,38 +292,16 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
   );
 }
 
-const RC_SECTION_LABELS: Record<string, string> = {
-  asia_athlete:             "◆ アジア競技大会（選手）",
-  para_athlete:             "◆ アジアパラ競技大会（選手）",
-  asia_technical_official:  "◆ アジア競技大会（技術役員）",
-  para_technical_official:  "◆ アジアパラ競技大会（技術役員）",
-  asia:                     "◆ アジア競技大会",
-  para:                     "◆ アジアパラ競技大会",
-};
-
-const RC_SECTION_ORDER = [
-  "asia_athlete", "asia_technical_official",
-  "para_athlete", "para_technical_official",
-  "asia", "para",
-] as const;
-
 function RoomChargeInTab({ chargeData }: { chargeData: RoomChargesDB[string] | null }) {
   if (!chargeData) return null;
-  const visible = RC_SECTION_ORDER.filter(k => {
-    const sec = chargeData[k as keyof typeof chargeData] as RoomChargeSection | null | undefined;
-    return sec != null && hasMeaningfulData(sec);
-  });
-  if (visible.length === 0) return null;
+  const hasAsia = chargeData.asia != null && hasMeaningfulData(chargeData.asia);
+  const hasPara = chargeData.para != null && hasMeaningfulData(chargeData.para);
+  if (!hasAsia && !hasPara) return null;
   return (
     <div className="mb-5 pb-5 border-b border-gray-100">
       <p className="text-xs font-semibold text-gray-500 mb-3">積算根拠（別紙1-1より）</p>
-      {visible.map(k => (
-        <RoomChargeSectionTable
-          key={k}
-          label={RC_SECTION_LABELS[k]}
-          section={chargeData[k as keyof typeof chargeData] as RoomChargeSection}
-        />
-      ))}
+      {hasAsia && <RoomChargeSectionTable label="◆ アジア競技大会" section={chargeData.asia!} />}
+      {hasPara && <RoomChargeSectionTable label="◆ アジアパラ競技大会" section={chargeData.para!} />}
     </div>
   );
 }
@@ -980,20 +948,10 @@ function CurrentModeDiffView({ execEntry, contractEntry }: { execEntry: RoomChar
 
   const fmt = (n: number) => n.toLocaleString("ja-JP", {style:"currency",currency:"JPY",maximumFractionDigits:0});
 
-  const ALL_KEYS: Array<{ key: keyof RoomChargesDB[string]; label: string }> = [
-    { key: "asia_athlete",            label: "アジア競技大会（選手）" },
-    { key: "asia_technical_official", label: "アジア競技大会（技術役員）" },
-    { key: "para_athlete",            label: "アジアパラ競技大会（選手）" },
-    { key: "para_technical_official", label: "アジアパラ競技大会（技術役員）" },
-    { key: "asia",                    label: "アジア競技大会" },
-    { key: "para",                    label: "アジアパラ競技大会" },
+  const sections: {label:string; exec: RoomChargeSection|null; contract: RoomChargeSection|null}[] = [
+    { label: "アジア競技大会", exec: execEntry?.asia??null, contract: contractEntry?.asia??null },
+    { label: "パラ競技大会", exec: execEntry?.para??null, contract: contractEntry?.para??null },
   ];
-
-  const sections = ALL_KEYS.map(({ key, label }) => ({
-    label,
-    exec: (execEntry?.[key] as RoomChargeSection | null | undefined) ?? null,
-    contract: (contractEntry?.[key] as RoomChargeSection | null | undefined) ?? null,
-  })).filter(s => s.exec || s.contract);
 
   return (
     <div className="space-y-6">
@@ -1461,10 +1419,29 @@ function HotelDetailInner() {
   const adjustedTotals = { ...totals, actual: adjustedActual };
 
   const variance = calcVariance(adjustedTotals.budget, adjustedTotals.actual);
-  const executedTotal = hotel.costItems.reduce(
-    (s, i) => s + (i.executedAmount || 0),
-    0
-  );
+
+  // 現状金額モード: 予算執行額の全バージョンの中でアジア+パラ合計が最大のものを執行済額（客室確保費）として使用
+  const RC_ALL_SECTION_KEYS = ["asia_athlete", "para_athlete", "asia_technical_official", "para_technical_official", "asia", "para"] as const;
+  const execRcMaxTotal: number | null = (() => {
+    if (mode !== "current" || execRcVersions.length === 0) return null;
+    let max: number | null = null;
+    for (const v of execRcVersions) {
+      const entry = v.data as Record<string, any>;
+      let sum = 0;
+      for (const k of RC_ALL_SECTION_KEYS) {
+        const sec = entry[k];
+        if (!sec) continue;
+        const val = sec.totalCostTax ?? sec.totalCost ?? null;
+        if (val != null) sum += val;
+      }
+      if (sum > 0 && (max === null || sum > max)) max = sum;
+    }
+    return max;
+  })();
+
+  const executedTotal = mode === "current" && execRcMaxTotal != null
+    ? execRcMaxTotal
+    : hotel.costItems.reduce((s, i) => s + (i.executedAmount || 0), 0);
   const executionPct =
     adjustedTotals.actual > 0
       ? Math.min(100, Math.round((executedTotal / adjustedTotals.actual) * 100))
