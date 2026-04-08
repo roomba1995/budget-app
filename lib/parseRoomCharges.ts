@@ -293,7 +293,10 @@ function parseSectionByFormat(
         rowText.includes("税込") ||
         rowText.includes("税サ込") ||
         rowText.includes("サ込税") ||
-        rowText.includes("税S込");
+        rowText.includes("税S込") ||
+        rowText.includes("消費税") ||
+        rowText.includes("％込") ||
+        rowText.includes("%込");
       let val: number | null = null;
       for (let c = 1; c < row.length; c++) {
         const n = toNum(row[c]);
@@ -448,7 +451,10 @@ function parseSection(
       const isTax =
         rowText.includes("税込") ||
         rowText.includes("税サ込") ||
-        rowText.includes("サ込税");
+        rowText.includes("サ込税") ||
+        rowText.includes("消費税") ||
+        rowText.includes("％込") ||
+        rowText.includes("%込");
       if (val != null) {
         if (isTax) { totalCostTax = val; }
         else { totalCost = val; }
