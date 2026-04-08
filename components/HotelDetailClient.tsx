@@ -1478,7 +1478,7 @@ function HotelDetailInner() {
     asia: "アジア", para: "パラ",
   };
   const execRcComputed: { total: number | null; warnings: string[] } = (() => {
-    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] };
+    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [], bestVersionNames: new Set<string>() };
 
     // セクションキーごとに最大金額バージョンを選択
     const bestByKey = new Map<string, { section: any; versionName: string; total: number }>();
@@ -1493,7 +1493,7 @@ function HotelDetailInner() {
         }
       }
     }
-    if (bestByKey.size === 0) return { total: null, warnings: [] };
+    if (bestByKey.size === 0) return { total: null, warnings: [], bestVersionNames: new Set<string>() };
 
     // 日付範囲を取得（min checkin 〜 max checkout）
     const getRange = (sec: any) => {
@@ -1525,7 +1525,9 @@ function HotelDetailInner() {
     }
 
     const total = entries.reduce((s, e) => s + e.total, 0);
-    return { total, warnings };
+    // 各セクションで採用されたバージョン名のセット（ドロップダウン表示用）
+    const bestVersionNames = new Set(entries.map(e => e.versionName));
+    return { total, warnings, bestVersionNames };
   })();
 
   const executedTotal = mode === "current" && execRcComputed.total != null
@@ -2221,7 +2223,7 @@ function HotelDetailInner() {
                                 >
                                   {execRcVersions.map((v, i) => (
                                     <option key={v.versionName} value={i}>
-                                      {v.versionName}{i === execRcVersions.length - 1 ? "（最新）" : ""}
+                                      {v.versionName}{execRcComputed.bestVersionNames.has(v.versionName) ? "（最新）" : ""}
                                     </option>
                                   ))}
                                 </select>
