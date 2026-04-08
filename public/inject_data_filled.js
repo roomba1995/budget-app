@@ -565,8 +565,8 @@
         "roomNights": 3740,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 173760400,
-        "totalCostTax": null
+        "totalCost": 157964000,
+        "totalCostTax": 173760400
       },
       "para_athlete": {
         "rooms": [
@@ -1116,8 +1116,8 @@
         "roomNights": 3936,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 163539200,
-        "totalCostTax": null
+        "totalCost": 148672000,
+        "totalCostTax": 163539200
       }
     }
   },
