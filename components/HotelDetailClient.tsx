@@ -1477,23 +1477,32 @@ function HotelDetailInner() {
     asia_technical_official: "アジア技術役員", para_technical_official: "パラ技術役員",
     asia: "アジア", para: "パラ",
   };
-  const execRcComputed: { total: number | null; warnings: string[]; bestVersionNames: Set<string> } = (() => {
-    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>() };
+  const execRcComputed: { total: number | null; warnings: string[]; bestVersionNames: Set<string>; mrBestVersionNames: Set<string> } = (() => {
+    // バージョン名から数値を抽出（予算執行１４ → 14）
+    const parseVersionNum = (versionName: string): number => {
+      const m = versionName.match(/[０-９0-9]+/);
+      if (!m) return 0;
+      const s = m[0].replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      return parseInt(s, 10);
+    };
 
-    // セクションキーごとに最大金額バージョンを選択
+    if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>(), mrBestVersionNames: new Set<string>() };
+
+    // セクションキーごとに最大バージョン番号のバージョンを選択
     const bestByKey = new Map<string, { section: any; versionName: string; total: number }>();
     for (const v of execRcVersions) {
+      const vNum = parseVersionNum(v.versionName);
       for (const k of RC_ALL_SECTION_KEYS) {
         const sec = (v.data as any)[k];
         if (!sec) continue;
         const total = (sec.totalCostTax ?? sec.totalCost ?? 0) as number;
         const existing = bestByKey.get(k);
-        if (!existing || total > existing.total) {
+        if (!existing || vNum > parseVersionNum(existing.versionName)) {
           bestByKey.set(k, { section: sec, versionName: v.versionName, total });
         }
       }
     }
-    if (bestByKey.size === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>() };
+    if (bestByKey.size === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>(), mrBestVersionNames: new Set<string>() };
 
     // 日付範囲を取得（min checkin 〜 max checkout）
     const getRange = (sec: any) => {
@@ -1524,20 +1533,45 @@ function HotelDetailInner() {
       }
     }
 
-    const total = entries.reduce((s, e) => s + e.total, 0);
+    const rcTotal = entries.reduce((s, e) => s + e.total, 0);
 
-    // 「最新」= セクションキーごとに最後に含まれているバージョン（配列末尾基準）
+    // 「最新」= セクションキーごとに最大バージョン番号
     const latestByKey = new Map<string, string>();
     for (const k of RC_ALL_SECTION_KEYS) {
-      for (let i = execRcVersions.length - 1; i >= 0; i--) {
-        if ((execRcVersions[i].data as any)[k]) {
-          latestByKey.set(k, execRcVersions[i].versionName);
-          break;
+      let bestNum = -1, bestName = '';
+      for (const v of execRcVersions) {
+        if (!(v.data as any)[k]) continue;
+        const vNum = parseVersionNum(v.versionName);
+        if (vNum > bestNum) { bestNum = vNum; bestName = v.versionName; }
+      }
+      if (bestName) latestByKey.set(k, bestName);
+    }
+    const bestVersionNames = new Set(Array.from(latestByKey.values()));
+
+    // MR（会議室等確保費）: セクションキーごとに最大バージョン番号を選択して合算
+    let mrTotal = 0;
+    const mrLatestByKey = new Map<string, string>();
+    for (const k of ['asia', 'para'] as const) {
+      let bestNum = -1, bestName = '';
+      for (const v of execMrVersions) {
+        const sec = (v.data as any)[k];
+        if (!sec) continue;
+        const vNum = parseVersionNum(v.versionName);
+        if (vNum > bestNum) { bestNum = vNum; bestName = v.versionName; }
+      }
+      if (bestName) {
+        mrLatestByKey.set(k, bestName);
+        const bestV = execMrVersions.find(v => v.versionName === bestName);
+        if (bestV) {
+          const sec = (bestV.data as any)[k];
+          mrTotal += (sec.totalCostTax ?? sec.totalCost ?? 0) as number;
         }
       }
     }
-    const bestVersionNames = new Set(Array.from(latestByKey.values()));
-    return { total, warnings, bestVersionNames };
+    const mrBestVersionNames = new Set(Array.from(mrLatestByKey.values()));
+
+    const total = rcTotal + mrTotal;
+    return { total, warnings, bestVersionNames, mrBestVersionNames };
   })();
 
   const executedTotal = mode === "current" && execRcComputed.total != null
@@ -2311,7 +2345,7 @@ function HotelDetailInner() {
                                 >
                                   {execMrVersions.map((v, i) => (
                                     <option key={v.versionName} value={i}>
-                                      {v.versionName}{i === execMrVersions.length - 1 ? "（最新）" : ""}
+                                      {v.versionName}{execRcComputed.mrBestVersionNames.has(v.versionName) ? "（最新）" : ""}
                                     </option>
                                   ))}
                                 </select>
