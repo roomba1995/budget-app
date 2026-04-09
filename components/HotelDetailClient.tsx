@@ -1478,7 +1478,7 @@ function HotelDetailInner() {
     asia: "アジア", para: "パラ",
   };
   const execRcComputed: { total: number | null; warnings: string[]; bestVersionNames: Set<string>; mrBestVersionNames: Set<string> } = (() => {
-    // バージョン名から数値を抽出（予算執行１４ → 14）
+    // バージョン名から数値を抽出（予算執行１４ → 14）：「最新」ラベル表示用
     const parseVersionNum = (versionName: string): number => {
       const m = versionName.match(/[０-９0-9]+/);
       if (!m) return 0;
@@ -1488,41 +1488,80 @@ function HotelDetailInner() {
 
     if (mode !== "current" || execRcVersions.length === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>(), mrBestVersionNames: new Set<string>() };
 
-    // セクションキーごとに最大バージョン番号のバージョンを選択
-    const bestByKey = new Map<string, { section: any; versionName: string; total: number }>();
-    for (const v of execRcVersions) {
-      const vNum = parseVersionNum(v.versionName);
-      for (const k of RC_ALL_SECTION_KEYS) {
-        const sec = (v.data as any)[k];
-        if (!sec) continue;
-        const total = (sec.totalCostTax ?? sec.totalCost ?? 0) as number;
-        const existing = bestByKey.get(k);
-        if (!existing || vNum > parseVersionNum(existing.versionName)) {
-          bestByKey.set(k, { section: sec, versionName: v.versionName, total });
-        }
-      }
-    }
-    if (bestByKey.size === 0) return { total: null, warnings: [] as string[], bestVersionNames: new Set<string>(), mrBestVersionNames: new Set<string>() };
+    // ─── 執行済み額計算: アジア/パラグループごとにRC+MR合算で最大金額バージョンを選択 ───
+    // グループ: アジア (asia_*/asia) とパラ (para_*/para) は独立して評価
+    const GROUPS = [
+      { rcKeys: ['asia_athlete', 'asia_technical_official'] as const, mrKey: 'asia' as const },
+      { rcKeys: ['para_athlete', 'para_technical_official'] as const, mrKey: 'para' as const },
+    ];
 
-    // 日付範囲を取得（min checkin 〜 max checkout）
+    const allVersionNames = Array.from(new Set([
+      ...execRcVersions.map(v => v.versionName),
+      ...execMrVersions.map(v => v.versionName),
+    ]));
+
+    let grandTotal = 0;
+    const execBestVersionNames = new Set<string>(); // 執行済み額計算に使ったバージョン（警告用）
+
+    const warningEntries: { key: string; versionName: string; total: number; range: { min: string | null; max: string | null } }[] = [];
+
     const getRange = (sec: any) => {
-      const rooms: any[] = sec.rooms ?? [];
+      const rooms: any[] = sec?.rooms ?? [];
       const checkins = rooms.map((r: any) => r.checkin).filter(Boolean).sort();
       const checkouts = rooms.map((r: any) => r.checkout).filter(Boolean).sort();
       return { min: checkins[0] ?? null, max: checkouts[checkouts.length - 1] ?? null };
     };
 
-    const entries = Array.from(bestByKey.entries()).map(([key, { section, versionName, total }]) => ({
-      key, versionName, total, range: getRange(section),
-    }));
+    for (const group of GROUPS) {
+      let bestVersionName = '';
+      let bestCombinedTotal = -1;
 
-    // ペアごとに日付重複チェック
+      for (const vName of allVersionNames) {
+        const rcVersion = execRcVersions.find(v => v.versionName === vName);
+        const mrVersion = execMrVersions.find(v => v.versionName === vName);
+        let combined = 0;
+        let hasData = false;
+
+        if (rcVersion) {
+          for (const k of group.rcKeys) {
+            const sec = (rcVersion.data as any)[k];
+            if (sec) { combined += (sec.totalCostTax ?? sec.totalCost ?? 0) as number; hasData = true; }
+          }
+        }
+        if (mrVersion) {
+          const sec = (mrVersion.data as any)[group.mrKey];
+          if (sec) { combined += (sec.totalCostTax ?? sec.totalCost ?? 0) as number; hasData = true; }
+        }
+
+        if (hasData && combined > bestCombinedTotal) {
+          bestCombinedTotal = combined;
+          bestVersionName = vName;
+        }
+      }
+
+      if (bestVersionName && bestCombinedTotal > 0) {
+        grandTotal += bestCombinedTotal;
+        execBestVersionNames.add(bestVersionName);
+
+        // 警告用エントリ（日付重複チェック）
+        const rcVersion = execRcVersions.find(v => v.versionName === bestVersionName);
+        if (rcVersion) {
+          for (const k of group.rcKeys) {
+            const sec = (rcVersion.data as any)[k];
+            if (sec) warningEntries.push({ key: k, versionName: bestVersionName, total: (sec.totalCostTax ?? sec.totalCost ?? 0) as number, range: getRange(sec) });
+          }
+        }
+      }
+    }
+
+    if (grandTotal === 0 && execBestVersionNames.size === 0) return { total: null, warnings: [], bestVersionNames: new Set<string>(), mrBestVersionNames: new Set<string>() };
+
+    // 日付重複チェック
     const warnings: string[] = [];
-    for (let i = 0; i < entries.length; i++) {
-      for (let j = i + 1; j < entries.length; j++) {
-        const a = entries[i], b = entries[j];
+    for (let i = 0; i < warningEntries.length; i++) {
+      for (let j = i + 1; j < warningEntries.length; j++) {
+        const a = warningEntries[i], b = warningEntries[j];
         if (!a.range.min || !a.range.max || !b.range.min || !b.range.max) continue;
-        // 重複判定: A.min <= B.max && B.min <= A.max
         if (a.range.min <= b.range.max && b.range.min <= a.range.max) {
           warnings.push(
             `${EXEC_SECTION_LABELS[a.key] ?? a.key}（${a.versionName}: ${a.range.min}〜${a.range.max}）と` +
@@ -1533,9 +1572,7 @@ function HotelDetailInner() {
       }
     }
 
-    const rcTotal = entries.reduce((s, e) => s + e.total, 0);
-
-    // 「最新」= セクションキーごとに最大バージョン番号
+    // ─── 「最新」ラベル: セクションキーごとに最大バージョン番号 ───
     const latestByKey = new Map<string, string>();
     for (const k of RC_ALL_SECTION_KEYS) {
       let bestNum = -1, bestName = '';
@@ -1548,30 +1585,20 @@ function HotelDetailInner() {
     }
     const bestVersionNames = new Set(Array.from(latestByKey.values()));
 
-    // MR（会議室等確保費）: セクションキーごとに最大バージョン番号を選択して合算
-    let mrTotal = 0;
+    // MR「最新」ラベル: セクションキーごとに最大バージョン番号
     const mrLatestByKey = new Map<string, string>();
     for (const k of ['asia', 'para'] as const) {
       let bestNum = -1, bestName = '';
       for (const v of execMrVersions) {
-        const sec = (v.data as any)[k];
-        if (!sec) continue;
+        if (!(v.data as any)[k]) continue;
         const vNum = parseVersionNum(v.versionName);
         if (vNum > bestNum) { bestNum = vNum; bestName = v.versionName; }
       }
-      if (bestName) {
-        mrLatestByKey.set(k, bestName);
-        const bestV = execMrVersions.find(v => v.versionName === bestName);
-        if (bestV) {
-          const sec = (bestV.data as any)[k];
-          mrTotal += (sec.totalCostTax ?? sec.totalCost ?? 0) as number;
-        }
-      }
+      if (bestName) mrLatestByKey.set(k, bestName);
     }
     const mrBestVersionNames = new Set(Array.from(mrLatestByKey.values()));
 
-    const total = rcTotal + mrTotal;
-    return { total, warnings, bestVersionNames, mrBestVersionNames };
+    return { total: grandTotal, warnings, bestVersionNames, mrBestVersionNames };
   })();
 
   const executedTotal = mode === "current" && execRcComputed.total != null
