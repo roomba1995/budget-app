@@ -353,11 +353,13 @@ function RoomChargeInTab({ chargeData }: { chargeData: RoomChargesDB[string] | n
 // ─────────────────────────────────────────────
 
 function MeetingRoomSectionTable({ label, section }: { label: string; section: MeetingRoomSection }) {
+  const [expanded, setExpanded] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!expanded) return;
     const top = topRef.current;
     const bottom = bottomRef.current;
     if (!top || !bottom) return;
@@ -370,12 +372,27 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
     top.addEventListener("scroll", onTop);
     bottom.addEventListener("scroll", onBottom);
     return () => { top.removeEventListener("scroll", onTop); bottom.removeEventListener("scroll", onBottom); };
-  }, [section]);
+  }, [section, expanded]);
 
   if (!section.rooms || section.rooms.length === 0) return null;
+  const fmt = (n: number | null | undefined) => n != null ? n.toLocaleString("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }) : "—";
   return (
     <div className="mb-4">
-      <div className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-1 mb-2 inline-block">{label}</div>
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="w-full flex items-center justify-between text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-2 mb-2 hover:bg-blue-100 transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <span className="text-blue-400 transition-transform duration-200" style={{ display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+          {label}
+        </span>
+        <span className="flex gap-4 tabular-nums font-normal text-blue-600">
+          <span>会場数: {section.rooms.length}</span>
+          <span>利用日数: {section.totalDays != null ? section.totalDays : "—"}</span>
+          <span className="font-bold">{fmt(section.totalCostTax ?? section.totalCost)}</span>
+        </span>
+      </button>
+      {expanded && (
       {/* Top scrollbar mirror */}
       <div ref={topRef} className="overflow-x-scroll" style={{ height: 16, overflowY: "hidden" }}>
         <div ref={spacerRef} style={{ height: 1 }} />
@@ -466,6 +483,7 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
           <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1650,10 +1668,25 @@ function HotelDetailInner() {
     return [...versions, newV];
   }
 
-  // 派生データ: 選択中バージョン（null = 最新 = 末尾）
-  const execEntry = execRcVersions.length > 0 ? (execRcVersions[execRcSelectedIdx ?? execRcVersions.length - 1]?.data ?? null) : null;
+  // バージョン名から数値を抽出するヘルパー（最新デフォルト用）
+  const parseVNum = (versionName: string): number => {
+    const m = versionName.match(/[０-９0-9]+/);
+    if (!m) return 0;
+    const s = m[0].replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    return parseInt(s, 10);
+  };
+  // デフォルト表示: バージョン番号が最大のインデックス
+  const defaultExecRcIdx = execRcVersions.length > 0
+    ? execRcVersions.reduce((best, v, i) => parseVNum(v.versionName) > parseVNum(execRcVersions[best].versionName) ? i : best, 0)
+    : 0;
+  const defaultExecMrIdx = execMrVersions.length > 0
+    ? execMrVersions.reduce((best, v, i) => parseVNum(v.versionName) > parseVNum(execMrVersions[best].versionName) ? i : best, 0)
+    : 0;
+
+  // 派生データ: 選択中バージョン（null = 最新 = バージョン番号最大）
+  const execEntry = execRcVersions.length > 0 ? (execRcVersions[execRcSelectedIdx ?? defaultExecRcIdx]?.data ?? null) : null;
   const contractEntry = contractRcVersions.length > 0 ? (contractRcVersions[contractRcSelectedIdx ?? contractRcVersions.length - 1]?.data ?? null) : null;
-  const execMrEntry = execMrVersions.length > 0 ? (execMrVersions[execMrSelectedIdx ?? execMrVersions.length - 1]?.data ?? null) : null;
+  const execMrEntry = execMrVersions.length > 0 ? (execMrVersions[execMrSelectedIdx ?? defaultExecMrIdx]?.data ?? null) : null;
   const contractMrEntry = contractMrVersions.length > 0 ? (contractMrVersions[contractMrSelectedIdx ?? contractMrVersions.length - 1]?.data ?? null) : null;
 
   const handleRcUpload = async (file: File, specificSheet?: string) => {
@@ -2288,7 +2321,7 @@ function HotelDetailInner() {
                               {execUploadError && <span className="text-xs text-red-500">{execUploadError}</span>}
                               {execRcVersions.length > 0 && (
                                 <select
-                                  value={execRcSelectedIdx ?? execRcVersions.length - 1}
+                                  value={execRcSelectedIdx ?? defaultExecRcIdx}
                                   onChange={e => setExecRcSelectedIdx(Number(e.target.value))}
                                   className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700"
                                 >
@@ -2366,7 +2399,7 @@ function HotelDetailInner() {
                               </label>
                               {execMrVersions.length > 0 && (
                                 <select
-                                  value={execMrSelectedIdx ?? execMrVersions.length - 1}
+                                  value={execMrSelectedIdx ?? defaultExecMrIdx}
                                   onChange={e => setExecMrSelectedIdx(Number(e.target.value))}
                                   className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700"
                                 >
