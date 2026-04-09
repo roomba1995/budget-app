@@ -393,6 +393,7 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
         </span>
       </button>
       {expanded && (
+        <>
       {/* Top scrollbar mirror */}
       <div ref={topRef} className="overflow-x-scroll" style={{ height: 16, overflowY: "hidden" }}>
         <div ref={spacerRef} style={{ height: 1 }} />
@@ -483,6 +484,7 @@ function MeetingRoomSectionTable({ label, section }: { label: string; section: M
           <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
         </div>
       </div>
+        </>
       )}
     </div>
   );
