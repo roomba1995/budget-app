@@ -1363,12 +1363,23 @@ function HotelDetailInner() {
     } catch { /* ignore */ }
     // 現状金額モード: 予算執行額・契約額（バージョン管理）
     if (mode === "current" && hotel?.facilityNo) {
+      const parseVNumLocal = (versionName: string): number => {
+        const m = versionName.match(/[０-９0-9]+/);
+        if (!m) return 0;
+        const s = m[0].replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+        return parseInt(s, 10);
+      };
       const loadVersions = <T,>(key: string, setter: (v: VersionedEntry<T>[]) => void) => {
         try {
           const raw = localStorage.getItem(key);
           if (!raw) return;
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) setter(parsed as VersionedEntry<T>[]);
+          if (Array.isArray(parsed)) {
+            const sorted = [...(parsed as VersionedEntry<T>[])].sort(
+              (a, b) => parseVNumLocal(a.versionName) - parseVNumLocal(b.versionName)
+            );
+            setter(sorted);
+          }
         } catch { /* ignore */ }
       };
       loadVersions<RoomChargesDB[string]>(`current-exec-rc-versions-${hotel.facilityNo}`, setExecRcVersions);
