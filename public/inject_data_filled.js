@@ -37159,7 +37159,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 18962500,
-        "totalCostTax": 20858750
+        "totalCostTax": null
       }
     }
   },
