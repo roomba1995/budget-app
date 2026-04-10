@@ -11,11 +11,11 @@
  *     - current-exec-rc-versions-${facilityNo} (別紙1-1 客室)
  *     - current-exec-mr-versions-${facilityNo} (別紙1-2 会議室等)
  *
- * Total entries: 147
+ * Total entries: 148
  */
 
 (function() {
-  // ── Parsed data from all 147 予算執行 files ──────────────────────────────────
+  // ── Parsed data from all 148 予算執行 files ──────────────────────────────────
   const PARSED_DATA = [
   {
     "hotelName": "ホテルコンコルド浜松",
@@ -10697,7 +10697,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 32522000,
-        "totalCostTax": 35774200
+        "totalCostTax": 36152000
       }
     },
     "mrEntry": null
@@ -20298,7 +20298,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 8754144,
-        "totalCostTax": 9629558
+        "totalCostTax": 9689758
       }
     },
     "mrEntry": null
@@ -34719,7 +34719,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 2444526,
-        "totalCostTax": 2688978
+        "totalCostTax": 2699778
       }
     },
     "mrEntry": null
@@ -36394,7 +36394,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 321965532,
-        "totalCostTax": 354162085.20000005
+        "totalCostTax": 358020085
       }
     },
     "mrEntry": null
@@ -37880,7 +37880,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 219195000,
-        "totalCostTax": 241114500
+        "totalCostTax": 242296500
       },
       "para_athlete": {
         "rooms": [
@@ -38071,7 +38071,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 210915000,
-        "totalCostTax": 232006500
+        "totalCostTax": 233143500
       }
     },
     "mrEntry": null
@@ -47566,7 +47566,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 12967000,
-        "totalCostTax": 14263700
+        "totalCostTax": 14357500
       }
     },
     "mrEntry": null
@@ -67438,7 +67438,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 106934000,
-        "totalCostTax": 117627400
+        "totalCostTax": 118320400
       }
     },
     "mrEntry": {
@@ -72378,7 +72378,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 32522000,
-        "totalCostTax": 35774200
+        "totalCostTax": 36057550
       }
     },
     "mrEntry": null
@@ -75431,7 +75431,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 11821000,
-        "totalCostTax": 13003100
+        "totalCostTax": 13088500
       }
     },
     "mrEntry": null
@@ -77216,7 +77216,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 13370000,
-        "totalCostTax": 14707000
+        "totalCostTax": 14884800
       }
     },
     "mrEntry": null
@@ -79389,7 +79389,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 47925000,
-        "totalCostTax": 52717500
+        "totalCostTax": 53292600
       }
     },
     "mrEntry": {
@@ -82125,6 +82125,205 @@
         "dailyCostTax": null,
         "totalCost": 210915000,
         "totalCostTax": 232006500
+      }
+    },
+    "mrEntry": null
+  },
+  {
+    "hotelName": "ルートイングランティア東海 Spa & Relaxation",
+    "versionName": "予算執行８４",
+    "entry": {
+      "hotelName": "ルートイングランティア東海 Spa & Relaxation",
+      "asia_technical_official": {
+        "rooms": [
+          {
+            "no": 1,
+            "roomType": "禁煙シングル",
+            "totalRooms": 0,
+            "offeredRooms": 1,
+            "checkin": "2026-09-16",
+            "mainStart": null,
+            "prepareDays": null,
+            "mainEnd": null,
+            "mainDays": 11,
+            "checkout": "2026-09-27",
+            "removeDays": null,
+            "preparePrice": null,
+            "mainPrice": 18500,
+            "dailyAmount": 18500,
+            "removePrice": null,
+            "roomNights": 11,
+            "lodgingFee": 203500,
+            "areaSqmMin": null,
+            "areaSqmMax": null,
+            "occupancy": 1,
+            "bedSizeW": 130,
+            "bedSizeH": 200,
+            "bedCount": 1,
+            "bath": null,
+            "lanWired": null,
+            "lanWireless": null,
+            "sonota": null,
+            "dailyOccupancyRef": null
+          },
+          {
+            "no": 2,
+            "roomType": "禁煙シングル",
+            "totalRooms": 0,
+            "offeredRooms": 52,
+            "checkin": "2026-09-18",
+            "mainStart": null,
+            "prepareDays": null,
+            "mainEnd": null,
+            "mainDays": 9,
+            "checkout": "2026-09-27",
+            "removeDays": null,
+            "preparePrice": null,
+            "mainPrice": 18500,
+            "dailyAmount": 962000,
+            "removePrice": null,
+            "roomNights": 468,
+            "lodgingFee": 8658000,
+            "areaSqmMin": null,
+            "areaSqmMax": null,
+            "occupancy": 1,
+            "bedSizeW": 130,
+            "bedSizeH": 200,
+            "bedCount": 1,
+            "bath": null,
+            "lanWired": null,
+            "lanWireless": null,
+            "sonota": null,
+            "dailyOccupancyRef": null
+          },
+          {
+            "no": 3,
+            "roomType": "禁煙ツイン",
+            "totalRooms": 0,
+            "offeredRooms": 10,
+            "checkin": "2026-09-18",
+            "mainStart": null,
+            "prepareDays": null,
+            "mainEnd": null,
+            "mainDays": 9,
+            "checkout": "2026-09-27",
+            "removeDays": null,
+            "preparePrice": null,
+            "mainPrice": 36500,
+            "dailyAmount": 365000,
+            "removePrice": null,
+            "roomNights": 90,
+            "lodgingFee": 3285000,
+            "areaSqmMin": null,
+            "areaSqmMax": null,
+            "occupancy": 2,
+            "bedSizeW": 110,
+            "bedSizeH": 195,
+            "bedCount": 2,
+            "bath": null,
+            "lanWired": null,
+            "lanWireless": null,
+            "sonota": null,
+            "dailyOccupancyRef": null
+          },
+          {
+            "no": 4,
+            "roomType": "禁煙シングル",
+            "totalRooms": 0,
+            "offeredRooms": 1,
+            "checkin": "2026-09-16",
+            "mainStart": null,
+            "prepareDays": null,
+            "mainEnd": null,
+            "mainDays": 11,
+            "checkout": "2026-09-27",
+            "removeDays": null,
+            "preparePrice": null,
+            "mainPrice": 18500,
+            "dailyAmount": 18500,
+            "removePrice": null,
+            "roomNights": 11,
+            "lodgingFee": 203500,
+            "areaSqmMin": null,
+            "areaSqmMax": null,
+            "occupancy": 1,
+            "bedSizeW": 130,
+            "bedSizeH": 200,
+            "bedCount": 1,
+            "bath": null,
+            "lanWired": null,
+            "lanWireless": null,
+            "sonota": null,
+            "dailyOccupancyRef": null
+          },
+          {
+            "no": 5,
+            "roomType": "禁煙シングル",
+            "totalRooms": 0,
+            "offeredRooms": 21,
+            "checkin": "2026-09-17",
+            "mainStart": null,
+            "prepareDays": null,
+            "mainEnd": null,
+            "mainDays": 10,
+            "checkout": "2026-09-27",
+            "removeDays": null,
+            "preparePrice": null,
+            "mainPrice": 18500,
+            "dailyAmount": 388500,
+            "removePrice": null,
+            "roomNights": 210,
+            "lodgingFee": 3885000,
+            "areaSqmMin": null,
+            "areaSqmMax": null,
+            "occupancy": 1,
+            "bedSizeW": 130,
+            "bedSizeH": 200,
+            "bedCount": 1,
+            "bath": null,
+            "lanWired": null,
+            "lanWireless": null,
+            "sonota": null,
+            "dailyOccupancyRef": null
+          },
+          {
+            "no": 6,
+            "roomType": "禁煙ツイン",
+            "totalRooms": 0,
+            "offeredRooms": 6,
+            "checkin": "2026-09-17",
+            "mainStart": null,
+            "prepareDays": null,
+            "mainEnd": null,
+            "mainDays": 10,
+            "checkout": "2026-09-27",
+            "removeDays": null,
+            "preparePrice": null,
+            "mainPrice": 36500,
+            "dailyAmount": 219000,
+            "removePrice": null,
+            "roomNights": 60,
+            "lodgingFee": 2190000,
+            "areaSqmMin": null,
+            "areaSqmMax": null,
+            "occupancy": 2,
+            "bedSizeW": 110,
+            "bedSizeH": 195,
+            "bedCount": 2,
+            "bath": null,
+            "lanWired": null,
+            "lanWireless": null,
+            "sonota": null,
+            "dailyOccupancyRef": null
+          }
+        ],
+        "totalRooms": 0,
+        "offeredRooms": 91,
+        "roomNights": 850,
+        "dailyCost": null,
+        "dailyCostTax": null,
+        "totalCost": 18425000,
+        "totalCostTax": 20417500
       }
     },
     "mrEntry": null
