@@ -12937,7 +12937,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 266514570,
-        "totalCostTax": null
+        "totalCostTax": 295476027
       },
       "para": {
         "rooms": [
@@ -13666,7 +13666,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 226837845,
-        "totalCostTax": null
+        "totalCostTax": 251485129.50000003
       }
     }
   },
@@ -37002,7 +37002,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 295961189
+        "totalCostTax": 325557307
       }
     },
     "mrEntry": {
@@ -61235,7 +61235,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 314820000
+        "totalCostTax": 346302000
       }
     },
     "mrEntry": {
@@ -64402,7 +64402,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 226837845,
-        "totalCostTax": null
+        "totalCostTax": 249521629.50000003
       },
       "para": {
         "rooms": [
@@ -65131,7 +65131,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": 226837845,
-        "totalCostTax": null
+        "totalCostTax": 249521629.50000003
       }
     }
   },
@@ -68208,7 +68208,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 27596400
+        "totalCostTax": 30356040
       }
     },
     "mrEntry": {
@@ -68857,7 +68857,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 66220000
+        "totalCostTax": 72842000
       }
     },
     "mrEntry": {
@@ -72964,7 +72964,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 279264000
+        "totalCostTax": 307190400
       }
     },
     "mrEntry": {
