@@ -34081,7 +34081,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 176734800
+        "totalCostTax": 160668000
       }
     },
     "mrEntry": null
@@ -37002,7 +37002,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 325557307
+        "totalCostTax": 295961189
       }
     },
     "mrEntry": {
@@ -54143,7 +54143,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 156924240
+        "totalCostTax": 142658400
       }
     },
     "mrEntry": null
@@ -61235,7 +61235,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 346302000
+        "totalCostTax": 314820000
       }
     },
     "mrEntry": {
@@ -68208,7 +68208,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 30356040
+        "totalCostTax": 27596400
       }
     },
     "mrEntry": {
@@ -68857,7 +68857,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 72842000
+        "totalCostTax": 66220000
       }
     },
     "mrEntry": {
@@ -72964,7 +72964,7 @@
         "dailyCost": null,
         "dailyCostTax": null,
         "totalCost": null,
-        "totalCostTax": 307190400
+        "totalCostTax": 279264000
       }
     },
     "mrEntry": {
