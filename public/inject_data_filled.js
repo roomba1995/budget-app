@@ -7799,7 +7799,7 @@
         "roomNights": 2190,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 56629000,
+        "totalCost": 62291900,
         "totalCostTax": 62291900.00000001
       }
     },
@@ -10696,7 +10696,7 @@
         "roomNights": 1519,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 32522000,
+        "totalCost": 35774200,
         "totalCostTax": 36152000
       }
     },
@@ -14711,7 +14711,7 @@
         "roomNights": 2691,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 75218000,
+        "totalCost": 82739800,
         "totalCostTax": 83489600
       }
     },
@@ -20297,7 +20297,7 @@
         "roomNights": 392,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 8754144,
+        "totalCost": 9629558,
         "totalCostTax": 9689758
       }
     },
@@ -34718,7 +34718,7 @@
         "roomNights": 54,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 2444526,
+        "totalCost": 2688979,
         "totalCostTax": 2699778
       }
     },
@@ -36393,7 +36393,7 @@
         "roomNights": 23148,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 321965532,
+        "totalCost": 354162085,
         "totalCostTax": 358020085
       }
     },
@@ -37879,7 +37879,7 @@
         "roomNights": 3345,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 219195000,
+        "totalCost": 241114500,
         "totalCostTax": 242296500
       },
       "para_athlete": {
@@ -38070,7 +38070,7 @@
         "roomNights": 4014,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 210915000,
+        "totalCost": 232006500,
         "totalCostTax": 233143500
       }
     },
@@ -42299,7 +42299,7 @@
         "roomNights": 1832,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 44391900,
+        "totalCost": 48831090,
         "totalCostTax": 48831090.00000001
       }
     },
@@ -47565,7 +47565,7 @@
         "roomNights": 469,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 12967000,
+        "totalCost": 14263700,
         "totalCostTax": 14357500
       }
     },
@@ -51214,7 +51214,7 @@
         "roomNights": 3520,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 149597400,
+        "totalCost": 164557140,
         "totalCostTax": 165701140
       },
       "para_athlete": {
@@ -51375,7 +51375,7 @@
         "roomNights": 2880,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 121884120,
+        "totalCost": 134072532,
         "totalCostTax": 135008532
       }
     },
@@ -62264,7 +62264,7 @@
         "roomNights": 243,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 4020975,
+        "totalCost": 4423073,
         "totalCostTax": 4468972
       },
       "para_technical_official": {
@@ -62695,7 +62695,7 @@
         "roomNights": 413,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 6923000,
+        "totalCost": 7615300,
         "totalCostTax": 7697200
       }
     },
@@ -63358,7 +63358,7 @@
         "roomNights": 3888,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 94646400,
+        "totalCost": 104111040,
         "totalCostTax": 104111040.00000001
       },
       "para_athlete": {
@@ -63669,7 +63669,7 @@
         "roomNights": 3888,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 94646400,
+        "totalCost": 104111040,
         "totalCostTax": 104111040.00000001
       }
     },
@@ -67437,7 +67437,7 @@
         "roomNights": 2020,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 106934000,
+        "totalCost": 117627400,
         "totalCostTax": 118320400
       }
     },
@@ -72377,7 +72377,7 @@
         "roomNights": 1519,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 32522000,
+        "totalCost": 35774200,
         "totalCostTax": 36057550
       }
     },
@@ -75111,7 +75111,7 @@
         "roomNights": 202,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 5732000,
+        "totalCost": 6305200,
         "totalCostTax": 6305200.000000001
       }
     },
@@ -75430,7 +75430,7 @@
         "roomNights": 427,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 11821000,
+        "totalCost": 13003100,
         "totalCostTax": 13088500
       }
     },
@@ -77215,7 +77215,7 @@
         "roomNights": 560,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 13370000,
+        "totalCost": 14707000,
         "totalCostTax": 14884800
       }
     },
@@ -79388,7 +79388,7 @@
         "roomNights": 2052,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 47925000,
+        "totalCost": 52717500,
         "totalCostTax": 53292600
       }
     },
@@ -79887,7 +79887,7 @@
         "roomNights": 960,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 24057600,
+        "totalCost": 26463360,
         "totalCostTax": 26751360
       },
       "asia_technical_official": {
@@ -80408,7 +80408,7 @@
         "roomNights": 1320,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 29952000,
+        "totalCost": 32947200,
         "totalCostTax": 33298200
       }
     },
@@ -82825,7 +82825,7 @@
         "roomNights": 850,
         "dailyCost": null,
         "dailyCostTax": null,
-        "totalCost": 18425000,
+        "totalCost": 20267500,
         "totalCostTax": 20417500
       }
     },
