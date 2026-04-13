@@ -310,7 +310,7 @@ function RoomChargeSectionTable({ label, section }: { label: string; section: Ro
         </div>
         <div className="bg-green-50 border border-green-100 rounded-lg p-2.5 text-center">
           <div className="text-green-600 mb-0.5">客室合計（税込）</div>
-          <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCostTax)}</div>
+          <div className="font-bold text-green-800 tabular-nums">{fmtNum(section.totalCost)}</div>
         </div>
         <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 text-center">
           <div className="text-emerald-600 mb-0.5">予算執行額合計</div>
