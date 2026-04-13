@@ -1347,6 +1347,19 @@ function HotelDetailInner() {
 
   // Load per-hotel entries from localStorage once hotel is known
   useEffect(() => {
+    // ホテル切り替え時にまず全stateをリセット
+    setPerHotelRcEntry(null);
+    setPerHotelMrEntry(null);
+    setPerHotelMcEntry(null);
+    setExecRcVersions([]);
+    setContractRcVersions([]);
+    setExecRcSelectedIdx(null);
+    setContractRcSelectedIdx(null);
+    setExecMrVersions([]);
+    setContractMrVersions([]);
+    setExecMrSelectedIdx(null);
+    setContractMrSelectedIdx(null);
+
     const facilityNo = hotel?.facilityNo ? String(parseInt(hotel.facilityNo, 10)) : null;
     if (!facilityNo) return;
     try {
