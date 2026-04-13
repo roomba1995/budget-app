@@ -3873,10 +3873,10 @@
     "mrEntry": null
   },
   {
-    "hotelName": "東横INN中部国際空港Ⅰ",
+    "hotelName": "東横INN中部国際空港１",
     "versionName": "予算執行１０",
     "entry": {
-      "hotelName": "東横INN中部国際空港Ⅰ",
+      "hotelName": "東横INN中部国際空港１",
       "asia_athlete": {
         "rooms": [
           {
@@ -36201,10 +36201,10 @@
     "mrEntry": null
   },
   {
-    "hotelName": "東横INN中部国際空港Ⅱ",
+    "hotelName": "東横INN中部国際空港２",
     "versionName": "予算執行２２６",
     "entry": {
-      "hotelName": "東横INN中部国際空港Ⅱ",
+      "hotelName": "東横INN中部国際空港２",
       "asia_athlete": {
         "rooms": [
           {
@@ -36400,10 +36400,10 @@
     "mrEntry": null
   },
   {
-    "hotelName": "東横INN中部国際空港Ⅰ",
+    "hotelName": "東横INN中部国際空港１",
     "versionName": "予算執行２２６",
     "entry": {
-      "hotelName": "東横INN中部国際空港Ⅰ",
+      "hotelName": "東横INN中部国際空港１",
       "asia_athlete": {
         "rooms": [
           {
@@ -74532,10 +74532,10 @@
     }
   },
   {
-    "hotelName": "東横INN中部国際空港Ⅱ",
+    "hotelName": "東横INN中部国際空港２",
     "versionName": "予算執行８",
     "entry": {
-      "hotelName": "東横INN中部国際空港Ⅱ",
+      "hotelName": "東横INN中部国際空港２",
       "asia_athlete": {
         "rooms": [
           {
@@ -82130,10 +82130,10 @@
     "mrEntry": null
   },
   {
-    "hotelName": "ルートイングランティア東海 Spa & Relaxation",
+    "hotelName": "ルートイングランティア東海Spa＆Relaxation",
     "versionName": "予算執行８４",
     "entry": {
-      "hotelName": "ルートイングランティア東海 Spa & Relaxation",
+      "hotelName": "ルートイングランティア東海Spa＆Relaxation",
       "asia_technical_official": {
         "rooms": [
           {
